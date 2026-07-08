@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopping Cart | GPU Trades</title>
+  
+  <meta name="description" content="Review your selected gaming PCs and computer components in your GPU Trades shopping cart. Secure checkout and fast delivery.">
+  <link rel="canonical" href="cart.html">
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet" id="bootstrap-css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  
+  <link href="assets/css/style.css" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script src="assets/js/supabase-sync.js"></script>
+  <script src="assets/js/products-data.js"></script>
+  <script src="assets/js/cart-wishlist.js"></script>
+  <script src="assets/js/auth-guard.js"></script>
+  <script src="assets/js/whatsapp-invite.js"></script>
+</head>
+<body>
+
+  <!-- Preloader -->
+  <div id="loading-screen">
+    <div class="loader-circuit-container">
+      <div class="loader-ring"></div>
+      <div class="loader-cpu-chip"></div>
+    </div>
+    <div class="font-monospace text-orange fs-7 mt-3 animate-pulse" data-translate="cart-boot">جاري حساب قيمة الفاتورة...</div>
+  </div>
+
+  <!-- Header -->
+  <script src="assets/js/main.js"></script>
+  <script>renderPremiumHeader();</script>
+
+  <!-- Page Banner -->
+  <section class="py-5 position-relative overflow-hidden bg-glass border-bottom border-orange">
+    <div class="circuit-overlay"></div>
+    <div class="container text-center py-3 position-relative z-1">
+      <h1 class="display-5 text-white mb-2" data-translate="cart-heading">سلة المشتريات</h1>
+      <p class="text-muted font-monospace fs-7" data-translate="cart-desc">قم بإدارة أجهزتك ومراجعة إجمالي الفاتورة قبل إتمام الشراء.</p>
+    </div>
+  </section>
+
+  <!-- Main Cart Layout -->
+  <section class="py-5">
+    <div class="container">
+      
+      <!-- Cart Wrapper -->
+      <div class="row g-4" id="cart-main-container">
+        
+        <!-- Cart Items List Column -->
+        <div class="col-lg-8">
+          <div class="glass-panel p-4 mb-4">
+            <h5 class="text-white font-monospace mb-4 border-bottom border-orange pb-2 text-uppercase" id="selected-items-heading"><i class="bi bi-cart3 me-2 ms-2 text-orange"></i>القطع المختارة</h5>
+            
+            <div class="table-responsive">
+              <table class="table table-borderless text-white align-middle font-monospace fs-7 mb-0">
+                <thead>
+                  <tr class="border-bottom border-orange" style="border-width: 1px !important;">
+                    <th scope="col" class="text-muted py-3" style="width: 50%;" data-translate="prod-details">تفاصيل المنتج</th>
+                    <th scope="col" class="text-muted py-3 text-center" style="width: 15%;" data-translate="unit-price">سعر الوحدة</th>
+                    <th scope="col" class="text-muted py-3 text-center" style="width: 20%;" data-translate="quantity">الكمية</th>
+                    <th scope="col" class="text-muted py-3 text-end" style="width: 15%;" data-translate="total">الإجمالي</th>
+                  </tr>
+                </thead>
+                <tbody id="cart-items-tbody">
+                  <!-- Injected via JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+        </div>
+
+        <!-- Summary & Coupon Column -->
+        <div class="col-lg-4">
+          
+          <!-- Coupon Box -->
+          <div class="glass-panel p-4 mb-4">
+            <h6 class="text-white font-monospace mb-3 text-uppercase" data-translate="coupon-promo"><i class="bi bi-ticket-perforated me-2 ms-2 text-orange"></i>تطبيق رمز الخصم</h6>
+            <div class="input-group mb-2 border-orange" style="border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden;">
+              <input type="text" id="coupon-code-input" class="form-control bg-glass text-white border-0 font-monospace fs-7 px-3 py-2" placeholder="e.g., GPU10" style="outline: none; box-shadow: none;">
+              <button class="btn btn-gradient font-monospace px-3" type="button" id="apply-coupon-btn" data-translate="apply">تطبيق</button>
+            </div>
+            <small class="text-muted font-monospace d-block" style="font-size: 0.65rem;" data-translate="coupon-suggest">جرب استخدام الرمز <span class="text-orange">GPU10</span> للحصول على خصم 10%، أو <span class="text-orange">GAMER20</span> لخصم 20%!</small>
+            
+            <div id="applied-coupon-details" class="mt-3 font-monospace fs-8 text-orange" style="display: none;">
+              <!-- Injected coupon details -->
+            </div>
+          </div>
+
+          <!-- Order Summary -->
+          <div class="glass-panel p-4 mb-4">
+            <h5 class="text-white font-monospace mb-4 border-bottom border-orange pb-2 text-uppercase" id="invoice-heading"><i class="bi bi-receipt me-2 ms-2 text-orange"></i>تفاصيل الفاتورة</h5>
+            
+            <div class="font-monospace fs-7 text-muted">
+              <div class="d-flex justify-content-between mb-3">
+                <span data-translate="subtotal">الإجمالي الفرعي:</span>
+                <span class="text-white" id="summary-subtotal">-</span>
+              </div>
+              <div class="d-flex justify-content-between mb-3 text-orange" id="summary-discount-row" style="display: none !important;">
+                <span><span data-translate="discount">قيمة الخصم</span> (<span id="summary-discount-pct">0</span>%):</span>
+                <span>-<span id="summary-discount-val">-</span></span>
+              </div>
+              <div class="d-flex justify-content-between mb-3">
+                <span data-translate="shipping">التوصيل والشحن:</span>
+                <span class="text-white" id="summary-shipping" data-translate="shipping-arranged">يُحدد عند التواصل</span>
+              </div>
+              <hr class="border-orange mb-3" style="opacity: 0.15;">
+              <div class="d-flex justify-content-between mb-4 fs-6 text-white fw-bold">
+                <span data-translate="grand-total">الإجمالي الكلي:</span>
+                <span class="text-orange" id="summary-total">-</span>
+              </div>
+            </div>
+
+            <button class="btn btn-gradient w-100 py-3 font-monospace fs-7" id="checkout-trigger-btn">
+              <i class="bi bi-shield-lock-fill me-2 ms-2"></i><span data-translate="proceed-checkout">المتابعة لإتمام الشراء</span>
+            </button>
+            <div id="login-required-note" class="text-center text-muted fs-9 font-monospace mt-2" style="display:none;">
+              <i class="bi bi-info-circle me-1 ms-1"></i>
+              <span id="login-required-note-text">يجب تسجيل الدخول قبل إتمام الشراء</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Empty Cart Layout -->
+      <div id="empty-cart-container" class="glass-panel p-5 text-center my-4" style="display: none;">
+        <i class="bi bi-cart-x text-orange display-1 d-block mb-3 animate-pulse" style="filter: drop-shadow(0 0 10px rgba(255,106,0,0.3));"></i>
+        <h4 class="text-white font-monospace" data-translate="empty-cart-title">سلة مشترياتك فارغة</h4>
+        <p class="text-muted font-monospace fs-7 mt-2" data-translate="empty-cart-desc">تصفح القطع المتميزة من كتالوج المنتجات وقم ببناء تجميعة أحلامك اليوم.</p>
+        <a href="products.html" class="btn btn-gradient font-monospace mt-3 px-4 py-3" data-translate="browse-products">الذهاب إلى كتالوج المنتجات</a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Checkout Details Form Modal -->
+  <div class="modal fade" id="checkoutFormModal" tabindex="-1" aria-labelledby="checkoutFormModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-content modal-content-premium border-orange glow-orange text-white">
+        <div class="modal-header modal-header-premium border-orange pb-2">
+          <h5 class="modal-title font-monospace text-orange text-uppercase lang-ar"><i class="bi bi-person-lines-fill me-2 ms-2"></i>بيانات الشحن والدفع</h5>
+          <h5 class="modal-title font-monospace text-orange text-uppercase lang-en"><i class="bi bi-person-lines-fill me-2"></i>SHIPPING & BILLING</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="checkout-details-form">
+          <div class="modal-body p-4 font-monospace fs-7 text-secondary">
+            <div class="mb-3">
+              <label class="form-label text-white lang-ar">الاسم الكامل</label>
+              <label class="form-label text-white lang-en">Full Name</label>
+              <input type="text" class="form-control form-control-premium fs-7" id="checkout-name" required placeholder="Name / الاسم">
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-white lang-ar">البريد الإلكتروني</label>
+              <label class="form-label text-white lang-en">Email Address</label>
+              <input type="email" class="form-control form-control-premium fs-7" id="checkout-email" required placeholder="email@domain.com">
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-white lang-ar">رقم الهاتف</label>
+              <label class="form-label text-white lang-en">Phone Number</label>
+              <input type="tel" class="form-control form-control-premium fs-7" id="checkout-phone" required placeholder="Phone / الهاتف">
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-white lang-ar">عنوان الشحن التفصيلي</label>
+              <label class="form-label text-white lang-en">Shipping Address</label>
+              <textarea class="form-control form-control-premium fs-7" id="checkout-address" rows="2" required placeholder="Address / العنوان"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer border-orange pt-2">
+            <button type="button" class="btn btn-outline-orange px-4 py-2 fs-7" data-bs-dismiss="modal">إغلاق / Close</button>
+            <button type="submit" class="btn btn-gradient px-4 py-2 fs-7">تأكيد الطلب / Confirm</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Checkout Invoice Simulator Modal -->
+  <div class="modal fade" id="checkoutModal" tabindex="-1" aria-labelledby="checkoutModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+      <div class="modal-content modal-content-premium border-orange glow-orange">
+        <div class="modal-header modal-header-premium">
+          <h5 class="modal-title font-monospace text-orange text-uppercase" id="checkoutModalLabel"><i class="bi bi-shield-check me-2 ms-2"></i>تأكيد الطلب</h5>
+        </div>
+        <div class="modal-body p-4 text-center font-monospace" id="checkout-modal-body">
+          <!-- Dynamically filled with invoice details -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <script>renderPremiumFooter();</script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+  <!-- Cart UI Controller Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      
+      const cartItemsTbody = document.getElementById('cart-items-tbody');
+      const cartMainContainer = document.getElementById('cart-main-container');
+      const emptyCartContainer = document.getElementById('empty-cart-container');
+      
+      // Invoice binds
+      const subtotalEl = document.getElementById('summary-subtotal');
+      const discountRow = document.getElementById('summary-discount-row');
+      const discountPct = document.getElementById('summary-discount-pct');
+      const discountVal = document.getElementById('summary-discount-val');
+      const shippingEl = document.getElementById('summary-shipping');
+      const totalEl = document.getElementById('summary-total');
+
+      // Coupon binds
+      const couponInput = document.getElementById('coupon-code-input');
+      const applyCouponBtn = document.getElementById('apply-coupon-btn');
+      const couponDetails = document.getElementById('applied-coupon-details');
+
+      // Checkout bind
+      const checkoutBtn = document.getElementById('checkout-trigger-btn');
+
+      function renderCartUI() {
+        const currentLang = getCurrentLang();
+
+        const loginNote = document.getElementById('login-required-note');
+        const loginNoteText = document.getElementById('login-required-note-text');
+        if (loginNote && loginNoteText) {
+          const session = getSession();
+          if (!session) {
+            loginNoteText.textContent = currentLang === 'ar' ? 'يجب تسجيل الدخول قبل إتمام الشراء' : 'You must log in before completing your purchase';
+            loginNote.style.display = 'block';
+          } else {
+            loginNote.style.display = 'none';
+          }
+        }
+
+        if (cart.length === 0) {
+          cartMainContainer.style.display = 'none';
+          emptyCartContainer.style.display = 'block';
+          return;
+        }
+
+        cartMainContainer.style.display = 'flex';
+        emptyCartContainer.style.display = 'none';
+
+        // Render rows
+        cartItemsTbody.innerHTML = cart.map(item => {
+          const product = PRODUCTS_DATA.find(p => String(p.id) === String(item.id));
+          if (!product) return '';
+
+          const itemTotal = (product.price * item.quantity).toFixed(2);
+          const name = currentLang === 'ar' ? product.name_ar : product.name_en;
+          const category = currentLang === 'ar' ? product.category_ar : product.category_en;
+          const removeText = currentLang === 'ar' ? 'حذف' : 'Remove';
+          
+          return `
+            <tr class="border-bottom border-orange" style="border-color: rgba(255,255,255,0.03) !important;">
+              <td class="py-3">
+                <div class="d-flex align-items-center gap-3">
+                  <div style="width: 60px; height: 60px;" class="d-flex align-items-center justify-content-center bg-glass border-orange rounded p-1">
+                    ${product.image}
+                  </div>
+                  <div>
+                    <h6 class="text-white mb-1 fs-7 text-truncate" style="max-width: 250px;">${name}</h6>
+                    <small class="text-orange" style="font-size: 0.65rem;">${category}</small>
+                    <button class="btn btn-link text-danger p-0 d-block fs-8 text-decoration-none mt-1 font-monospace" onclick="removeFromCart('${product.id}')">
+                      <i class="bi bi-trash3 me-1 ms-1"></i>${removeText}
+                    </button>
+                  </div>
+                </div>
+              </td>
+              <td class="py-3 text-center" dir="ltr">${formatPrice(product.price)}</td>
+              <td class="py-3">
+                <div class="input-group border-orange mx-auto" style="width: 100px; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden;">
+                  <button class="btn btn-outline-secondary border-0 text-white py-0 px-2 fs-7" type="button" onclick="updateCartQuantity('${product.id}', ${item.quantity - 1})"><i class="bi bi-dash"></i></button>
+                  <input type="text" class="form-control bg-glass text-white border-0 text-center font-monospace py-0 px-1 fs-8 fw-bold" value="${item.quantity}" readonly>
+                  <button class="btn btn-outline-secondary border-0 text-white py-0 px-2 fs-7" type="button" onclick="updateCartQuantity('${product.id}', ${item.quantity + 1})"><i class="bi bi-plus"></i></button>
+                </div>
+              </td>
+              <td class="py-3 text-end fw-bold text-white" dir="ltr">${formatPrice(parseFloat(itemTotal))}</td>
+            </tr>
+          `;
+        }).join('');
+
+        // Math totals
+        const totals = getCartTotals();
+
+        subtotalEl.innerHTML = formatPrice(parseFloat(totals.subtotal));
+        // Shipping is not priced by the site; it's arranged directly with the store.
+        shippingEl.textContent = currentLang === 'ar' ? 'يُحدد عند التواصل' : 'Arranged with store';
+        totalEl.innerHTML = formatPrice(parseFloat(totals.total));
+
+        // Coupon display
+        if (totals.couponCode) {
+          discountRow.style.setProperty('display', 'flex', 'important');
+          discountPct.textContent = totals.discountPercentage;
+          discountVal.innerHTML = formatPrice(parseFloat(totals.discountAmount));
+          couponDetails.style.display = 'block';
+          const codeAppliedText = currentLang === 'ar' ? `تم تطبيق الرمز: <span class="fw-bold">${totals.couponCode}</span> (خصم ${totals.discountPercentage}%)` : `Code Applied: <span class="fw-bold">${totals.couponCode}</span> (${totals.discountPercentage}% OFF)`;
+          const couponRemoveText = currentLang === 'ar' ? 'إزالة' : 'Remove';
+          couponDetails.innerHTML = `
+            <div class="d-flex align-items-center justify-content-between">
+              <span>${codeAppliedText}</span>
+              <button class="btn btn-link text-danger p-0 fs-8 text-decoration-none font-monospace" onclick="removeCoupon()">${couponRemoveText}</button>
+            </div>
+          `;
+          couponInput.value = totals.couponCode;
+        } else {
+          discountRow.style.setProperty('display', 'none', 'important');
+          couponDetails.style.display = 'none';
+          couponInput.value = '';
+        }
+      }
+
+      // Add event listeners
+      window.addEventListener('cartUpdated', renderCartUI);
+      window.addEventListener('languageChanged', renderCartUI);
+      window.addEventListener('gpu:synced', renderCartUI);
+
+      applyCouponBtn.addEventListener('click', () => {
+        applyCoupon(couponInput.value);
+      });
+
+      // Checkout simulator trigger — login is required before completing any purchase
+      checkoutBtn.addEventListener('click', () => {
+        const session = getSession();
+        const currentLang = getCurrentLang();
+
+        if (!session) {
+          const msg = currentLang === 'ar'
+            ? 'يجب تسجيل الدخول أولاً لإتمام عملية الشراء.'
+            : 'You must log in first to complete your purchase.';
+          showToast(msg, 'error');
+          setTimeout(() => {
+            window.location.href = 'login.html?redirect=cart.html';
+          }, 1200);
+          return;
+        }
+
+        // Pre-fill with the ACTUAL logged-in customer only (never a random account)
+        if (!ADMIN_ROLES.includes(session.role)) {
+          const registeredUsers = JSON.parse(localStorage.getItem('gpu_users')) || [];
+          const account = registeredUsers.find(u => u.email === session.email);
+          if (account) {
+            document.getElementById('checkout-name').value = account.name || '';
+            document.getElementById('checkout-email').value = account.email || '';
+            document.getElementById('checkout-phone').value = account.phone || '';
+          }
+        }
+        
+        const formModal = new bootstrap.Modal(document.getElementById('checkoutFormModal'));
+        formModal.show();
+      });
+
+      // Submit checkout details form
+      const checkoutDetailsForm = document.getElementById('checkout-details-form');
+      checkoutDetailsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const customerName = document.getElementById('checkout-name').value.trim();
+        const customerEmail = document.getElementById('checkout-email').value.trim();
+        const customerPhone = document.getElementById('checkout-phone').value.trim();
+        const customerAddress = document.getElementById('checkout-address').value.trim();
+
+        // Hide checkout form modal
+        const formModalEl = document.getElementById('checkoutFormModal');
+        bootstrap.Modal.getInstance(formModalEl).hide();
+
+        const currentLang = getCurrentLang();
+        const totals = getCartTotals();
+        const invoiceId = 'GPU-' + Math.floor(100000 + Math.random() * 900000);
+        const modalBody = document.getElementById('checkout-modal-body');
+        
+        // Save simulated order to LocalStorage
+        let orders = JSON.parse(localStorage.getItem('gpu_orders')) || [];
+        const orderItems = cart.map(item => {
+          const product = PRODUCTS_DATA.find(p => String(p.id) === String(item.id));
+          return {
+            id: item.id,
+            name_en: product ? product.name_en : 'Unknown Component',
+            name_ar: product ? product.name_ar : 'مكون غير معروف',
+            price: product ? product.price : 0,
+            quantity: item.quantity
+          };
+        });
+        const newOrder = {
+          id: invoiceId,
+          date: new Date().toLocaleDateString('ar-EG', { year: 'numeric', month: 'long', day: 'numeric' }),
+          createdAt: Date.now(),
+          items: orderItems,
+          customer: {
+            name: customerName,
+            email: customerEmail,
+            phone: customerPhone,
+            address: customerAddress
+          },
+          subtotal: parseFloat(totals.subtotal),
+          discount: parseFloat(totals.discountAmount),
+          total: parseFloat(totals.total),
+          couponCode: totals.couponCode || null,
+          // Orders always start as Pending. Stock is NOT deducted and revenue is
+          // NOT counted here — that only happens once an admin presses "Confirm"
+          // in the dashboard (see confirmOrder() in assets/js/admin.js).
+          status: 'Pending'
+        };
+
+        if (window.gpuSync) {
+          await window.gpuSync.createOrder(newOrder);
+        }
+
+        orders.push(newOrder);
+        localStorage.setItem('gpu_orders', JSON.stringify(orders));
+        // NOTE: stock is intentionally left untouched at order-creation time.
+
+        const itemsInvoiceRows = cart.map(item => {
+          const product = PRODUCTS_DATA.find(p => String(p.id) === String(item.id));
+          if (!product) return '';
+          const name = currentLang === 'ar' ? product.name_ar : product.name_en;
+          return `
+            <div class="d-flex justify-content-between fs-8 text-muted mb-1">
+              <span>${name} (x${item.quantity})</span>
+              <span dir="ltr">${formatPrice(product.price * item.quantity)}</span>
+            </div>
+          `;
+        }).join('');
+
+        const successTitle = currentLang === 'ar' ? 'تم استلام طلبك!' : 'ORDER RECEIVED!';
+        const invoiceLabel = currentLang === 'ar' ? 'رقم الفاتورة:' : 'INVOICE:';
+        const itemsOrderedLabel = currentLang === 'ar' ? 'القطع المطلوبة:' : 'ITEMS ORDERED:';
+        const grandTotalLabel = currentLang === 'ar' ? 'الإجمالي الكلي:' : 'Grand Total:';
+        const mockInvoiceDesc = currentLang === 'ar' 
+          ? 'تم إنشاء فاتورتك وتسجيل طلبك بحالة "قيد الانتظار". أكمل الآن على واتساب حتى يقوم فريقنا بمراجعة وتأكيد طلبك.' 
+          : 'Your invoice has been created and your order is now Pending. Continue on WhatsApp so our team can review and confirm it.';
+        const returnBtnText = currentLang === 'ar' ? 'إغلاق والعودة للرئيسية' : 'Close and Return Home';
+        const whatsappBtnText = currentLang === 'ar' ? 'تأكيد الطلب عبر واتساب' : 'Confirm Order via WhatsApp';
+
+        // Build WhatsApp message with the invoice details
+        const waLines = cart.map(item => {
+          const product = PRODUCTS_DATA.find(p => String(p.id) === String(item.id));
+          if (!product) return '';
+          const name = currentLang === 'ar' ? product.name_ar : product.name_en;
+          return `- ${name} (x${item.quantity}) ${formatPrice(product.price * item.quantity)}`;
+        }).join('\n');
+
+        const waMessage = currentLang === 'ar'
+          ? `مرحباً GPU Trades، أريد تأكيد طلبي.\nرقم الفاتورة: ${invoiceId}\nالاسم: ${customerName}\nالهاتف: ${customerPhone}\nالعنوان: ${customerAddress}\n\nالقطع المطلوبة:\n${waLines}\n\nالإجمالي الكلي: ${formatPrice(parseFloat(totals.total))}`
+          : `Hello GPU Trades, I'd like to confirm my order.\nInvoice: ${invoiceId}\nName: ${customerName}\nPhone: ${customerPhone}\nAddress: ${customerAddress}\n\nItems:\n${waLines}\n\nGrand Total: ${formatPrice(parseFloat(totals.total))}`;
+
+        const whatsappUrl = `https://wa.me/201555765071?text=${encodeURIComponent(waMessage)}`;
+
+        modalBody.innerHTML = `
+          <i class="bi bi-shield-check text-success display-2 d-block mb-3 animate-pulse" style="filter: drop-shadow(0 0 10px rgba(40, 167, 69, 0.4));"></i>
+          <h4 class="text-white text-uppercase mb-1">${successTitle}</h4>
+          <span class="text-orange fs-8 d-block mb-4">${invoiceLabel} ${invoiceId}</span>
+          
+          <div class="text-start border border-orange rounded p-3 mb-4 bg-glass">
+            <h6 class="text-white border-bottom border-orange pb-1 mb-2 fs-7">${itemsOrderedLabel}</h6>
+            ${itemsInvoiceRows}
+            <hr class="border-orange my-2" style="opacity: 0.15;">
+            <div class="d-flex justify-content-between text-white fs-7 fw-bold">
+              <span>${grandTotalLabel}</span>
+              <span class="text-orange" dir="ltr">${formatPrice(parseFloat(totals.total))}</span>
+            </div>
+          </div>
+          
+          <p class="text-muted fs-8 mb-4">
+            ${mockInvoiceDesc}
+          </p>
+          
+          <a href="${whatsappUrl}" target="_blank" rel="noopener" class="btn btn-success px-4 py-2 font-monospace fs-7 mb-2 d-block" onclick="completeCheckoutSession()"><i class="bi bi-whatsapp me-2 ms-2"></i>${whatsappBtnText}</a>
+          <button class="btn btn-outline-secondary px-4 py-2 font-monospace fs-7" onclick="completeCheckoutSession()">${returnBtnText}</button>
+        `;
+
+        const modal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+        modal.show();
+
+        // Auto-redirect the customer to the store's WhatsApp to confirm the order
+        window.open(whatsappUrl, '_blank');
+      });
+
+      window.completeCheckoutSession = function() {
+        // Clear Cart
+        cart = [];
+        localStorage.removeItem('gpu_cart');
+        localStorage.removeItem('gpu_active_coupon');
+        activeCoupon = null;
+        updateNavigationBadges();
+        
+        // Hide Modal and Redirect
+        const modalEl = document.getElementById('checkoutModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) modalInstance.hide();
+        
+        window.location.href = 'index.html';
+      };
+
+      // Initial Render
+      renderCartUI();
+    });
+  </script>
+</body>
+</html>

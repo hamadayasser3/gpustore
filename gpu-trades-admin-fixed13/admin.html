@@ -1,0 +1,1748 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة تحكم GPU Tech</title>
+  
+  <meta name="description" content="إدارة المنتجات، متابعة العملاء المسجلين، ضبط الخصومات، ومتابعة سجلات العمليات.">
+  <link rel="canonical" href="admin.html">
+  
+  <!-- CSS Stylesheets -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  
+  <link href="assets/css/style.css" rel="stylesheet">
+  <link href="assets/css/admin.css" rel="stylesheet">
+  
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script src="assets/js/supabase-sync.js"></script>
+  <script src="assets/js/products-data.js"></script>
+  <script src="assets/js/cart-wishlist.js"></script>
+</head>
+
+<body class="admin-body">
+
+  <!-- ==========================================
+       AUTH GATE — blocks the console until a real Supabase Auth session
+       exists AND that user has an active row in staff_profiles with one
+       of: Super Admin / Admin / Warehouse / Sales / Customer Support /
+       Accountant. See assets/js/supabase-client.js + supabase-schema.sql.
+       ========================================== -->
+  <div id="admin-auth-gate" style="width:100%; min-height:100vh; display:flex; align-items:center; justify-content:center; background:var(--admin-bg-canvas); padding:1.5rem;">
+    <div style="width:100%; max-width:400px;" class="admin-card">
+      <div class="text-center mb-4">
+        <i class="bi bi-shield-lock-fill" style="font-size:2.5rem; color:var(--admin-primary);"></i>
+        <h4 class="mt-2 mb-1">الدخول إلى لوحة التحكم</h4>
+        <p class="text-muted fs-8 mb-0">سجّل الدخول بحساب موظف للمتابعة.</p>
+      </div>
+
+      <div id="admin-gate-error" class="alert alert-danger py-2 fs-8" style="display:none;"></div>
+
+      <form id="admin-gate-form">
+        <div class="mb-3">
+          <label class="admin-form-label">البريد الإلكتروني</label>
+          <input type="email" id="admin-gate-email" class="form-control admin-form-control" placeholder="admin@gputrades.com" required>
+        </div>
+        <div class="mb-3">
+          <label class="admin-form-label">كلمة المرور</label>
+          <input type="password" id="admin-gate-password" class="form-control admin-form-control" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn w-100 py-2" style="background:var(--admin-primary); color:#fff;">
+          <i class="bi bi-box-arrow-in-right me-1"></i> تسجيل الدخول
+        </button>
+      </form>
+
+      <div class="text-center mt-3">
+        <a href="index.html" class="fs-9 text-muted"><i class="bi bi-arrow-right me-1"></i>الرجوع للمتجر</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- FIRST-RUN SETUP: shown instead of the login gate ONLY when staff_profiles has zero rows (checked via the staff_count() RPC) -->
+  <div id="admin-setup-gate" style="display:none; width:100%; min-height:100vh; align-items:center; justify-content:center; background:var(--admin-bg-canvas); padding:1.5rem;">
+    <div style="width:100%; max-width:440px;" class="admin-card">
+      <div class="text-center mb-4">
+        <i class="bi bi-person-badge-fill" style="font-size:2.5rem; color:var(--admin-primary);"></i>
+        <h4 class="mt-2 mb-1">إنشاء حساب المدير الأول</h4>
+        <p class="text-muted fs-8 mb-0">لا يوجد أي حساب مدير على هذا المتجر بعد. أنشئ حساب "مشرف عام" لتفعيل لوحة التحكم.</p>
+      </div>
+
+      <div id="admin-setup-error" class="alert alert-danger py-2 fs-8" style="display:none;"></div>
+
+      <form id="admin-setup-form">
+        <div class="mb-3">
+          <label class="admin-form-label">الاسم</label>
+          <input type="text" id="setup-name" class="form-control admin-form-control" placeholder="اسمك" required>
+        </div>
+        <div class="mb-3">
+          <label class="admin-form-label">البريد الإلكتروني</label>
+          <input type="email" id="setup-email" class="form-control admin-form-control" placeholder="admin@gputrades.com" required>
+        </div>
+        <div class="mb-3">
+          <label class="admin-form-label">كلمة المرور</label>
+          <input type="password" id="setup-password" class="form-control admin-form-control" placeholder="8 أحرف على الأقل" required minlength="8">
+        </div>
+        <div class="mb-3">
+          <label class="admin-form-label">تأكيد كلمة المرور</label>
+          <input type="password" id="setup-password-confirm" class="form-control admin-form-control" placeholder="••••••••" required minlength="8">
+        </div>
+        <button type="submit" class="btn w-100 py-2" style="background:var(--admin-primary); color:#fff;">
+          <i class="bi bi-shield-check me-1"></i> إنشاء الحساب والدخول
+        </button>
+      </form>
+
+      <div class="text-center mt-3">
+        <a href="index.html" class="fs-9 text-muted"><i class="bi bi-arrow-right me-1"></i>الرجوع للمتجر</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="admin-wrapper" style="display:none;">
+    <!-- ==========================================
+         SIDEBAR
+         ========================================== -->
+    <aside id="admin-sidebar">
+      <div class="sidebar-logo">
+        <img src="assets/img/logo.png" alt="GPU Logo">
+        <span class="sidebar-logo-text">لوحة GPU</span>
+      </div>
+      
+      <!-- Profile summary box -->
+      <div id="sidebar-profile-box"></div>
+      
+      <!-- Grouped Sidebar Menu -->
+      <div class="px-3 py-2 text-white-50 font-monospace fs-9 fw-bold mt-2">الرئيسية والإحصائيات</div>
+      <ul class="sidebar-menu py-0">
+        <li class="sidebar-item" data-tab="dashboard-home">
+          <a class="sidebar-link active" onclick="switchTab('dashboard-home', this)">
+            <i class="bi bi-speedometer2"></i>
+            <span>الرئيسية</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-reports">
+          <a class="sidebar-link" onclick="switchTab('tab-reports', this)">
+            <i class="bi bi-bar-chart-line"></i>
+            <span>التقارير</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="px-3 py-2 text-white-50 font-monospace fs-9 fw-bold mt-2">إدارة الكتالوج</div>
+      <ul class="sidebar-menu py-0">
+        <li class="sidebar-item" data-tab="tab-products">
+          <a class="sidebar-link" onclick="switchTab('tab-products', this)">
+            <i class="bi bi-box-seam"></i>
+            <span>قائمة المنتجات</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-categories">
+          <a class="sidebar-link" onclick="switchTab('tab-categories', this)">
+            <i class="bi bi-folder2-open"></i>
+            <span>الأقسام</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-brands">
+          <a class="sidebar-link" onclick="switchTab('tab-brands', this)">
+            <i class="bi bi-tags"></i>
+            <span>الماركات</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-inventory">
+          <a class="sidebar-link" onclick="switchTab('tab-inventory', this)">
+            <i class="bi bi-shield-exclamation"></i>
+            <span>حالة المخزون</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="px-3 py-2 text-white-50 font-monospace fs-9 fw-bold mt-2">المبيعات والعروض</div>
+      <ul class="sidebar-menu py-0">
+        <li class="sidebar-item" data-tab="tab-orders">
+          <a class="sidebar-link" onclick="switchTab('tab-orders', this)">
+            <i class="bi bi-receipt-cutoff"></i>
+            <span>طلبات العملاء</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-coupons">
+          <a class="sidebar-link" onclick="switchTab('tab-coupons', this)">
+            <i class="bi bi-percent"></i>
+            <span>أكواد الخصم</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-offers">
+          <a class="sidebar-link" onclick="switchTab('tab-offers', this)">
+            <i class="bi bi-gift"></i>
+            <span>العروض والتخفيضات</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="px-3 py-2 text-white-50 font-monospace fs-9 fw-bold mt-2">الفواتير والمشتريات</div>
+      <ul class="sidebar-menu py-0">
+        <li class="sidebar-item" data-tab="tab-invoices">
+          <a class="sidebar-link" onclick="switchTab('tab-invoices', this)">
+            <i class="bi bi-file-earmark-text"></i>
+            <span>الفواتير</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-purchases">
+          <a class="sidebar-link" onclick="switchTab('tab-purchases', this)">
+            <i class="bi bi-bag-check"></i>
+            <span>المشتريات والأرباح</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="px-3 py-2 text-white-50 font-monospace fs-9 fw-bold mt-2">الدعم وإدارة العملاء</div>
+      <ul class="sidebar-menu py-0">
+        <li class="sidebar-item" data-tab="tab-customers">
+          <a class="sidebar-link" onclick="switchTab('tab-customers', this)">
+            <i class="bi bi-people"></i>
+            <span>دليل العملاء</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-messages">
+          <a class="sidebar-link" onclick="switchTab('tab-messages', this)">
+            <i class="bi bi-chat-left-text"></i>
+            <span>رسائل التواصل</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-reviews">
+          <a class="sidebar-link" onclick="switchTab('tab-reviews', this)">
+            <i class="bi bi-star"></i>
+            <span>تقييمات المنتجات</span>
+          </a>
+        </li>
+      </ul>
+
+      <div class="px-3 py-2 text-white-50 font-monospace fs-9 fw-bold mt-2">الأمان والنظام</div>
+      <ul class="sidebar-menu py-0">
+        <li class="sidebar-item" data-tab="tab-users">
+          <a class="sidebar-link" onclick="switchTab('tab-users', this)">
+            <i class="bi bi-shield-lock"></i>
+            <span>صلاحيات الموظفين</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-activity-log">
+          <a class="sidebar-link" onclick="switchTab('tab-activity-log', this)">
+            <i class="bi bi-clock-history"></i>
+            <span>سجل الأنشطة</span>
+          </a>
+        </li>
+        <li class="sidebar-item" data-tab="tab-settings">
+          <a class="sidebar-link" onclick="switchTab('tab-settings', this)">
+            <i class="bi bi-gear"></i>
+            <span>إعدادات المتجر</span>
+          </a>
+        </li>
+      </ul>
+      
+      <!-- Exit Button -->
+      <div class="p-3 mt-auto border-top border-secondary-subtle">
+        <a href="index.html" class="btn btn-outline-light w-100 fs-9 py-2"><i class="bi bi-box-arrow-left me-1"></i>واجهة المتجر</a>
+      </div>
+    </aside>
+
+    <!-- ==========================================
+         CONTENT AREA
+         ========================================== -->
+    <div id="admin-content-wrapper">
+      <!-- Top Navbar Header -->
+      <header class="admin-topbar">
+        <div class="d-flex align-items-center gap-3">
+          <button class="toggle-sidebar-btn" id="toggle-sidebar-btn"><i class="bi bi-list"></i></button>
+          <div class="input-group d-none d-lg-flex" style="width: 250px;">
+            <span class="input-group-text bg-light border"><i class="bi bi-search text-muted"></i></span>
+            <input type="text" class="form-control admin-form-control py-1 fs-8" placeholder="بحث سريع..." onkeyup="executeQuickSearch(this.value)">
+          </div>
+        </div>
+        <div id="admin-topbar-right"></div>
+      </header>
+
+      <!-- Main Canvas Container -->
+      <main class="container-fluid p-4">
+        
+        <!-- ==========================================
+             TAB 1: DASHBOARD HOME
+             ========================================== -->
+        <div id="dashboard-home" class="admin-tab-panel">
+
+          <!-- Page intro -->
+          <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-1">
+            <div>
+              <h5 class="fw-bold mb-1"><i class="bi bi-speedometer2 text-primary me-2"></i>نظرة عامة على المتجر</h5>
+              <p class="text-muted fs-8 mb-0" id="dash-today-label">ملخص الأداء لحظة بلحظة.</p>
+            </div>
+            <button class="btn btn-outline-primary btn-sm fs-9 px-3" onclick="refreshDashboardViews()">
+              <i class="bi bi-arrow-clockwise me-1"></i>تحديث البيانات
+            </button>
+          </div>
+
+          <!-- SALES OVERVIEW (hero row) -->
+          <div class="dash-section-title">المبيعات</div>
+          <div class="row g-4">
+            <div class="col-xl-4 col-md-6">
+              <div class="dash-hero-card grad-blue">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div class="dash-hero-icon"><i class="bi bi-cash-stack"></i></div>
+                  <span class="dash-trend-pill" id="stat-sales-total-orders-pill"><i class="bi bi-receipt"></i> 0 طلب</span>
+                </div>
+                <div class="dash-hero-value" id="stat-sales-total">0 EGP</div>
+                <div class="dash-hero-label">إجمالي المبيعات (كل الأوقات)</div>
+              </div>
+            </div>
+            <div class="col-xl-4 col-md-6">
+              <div class="dash-hero-card grad-orange">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div class="dash-hero-icon"><i class="bi bi-sun"></i></div>
+                  <span class="dash-trend-pill" id="stat-sales-today-orders-pill"><i class="bi bi-receipt"></i> 0 طلب</span>
+                </div>
+                <div class="dash-hero-value" id="stat-sales-today">0 EGP</div>
+                <div class="dash-hero-label">مبيعات اليوم</div>
+              </div>
+            </div>
+            <div class="col-xl-4 col-md-6">
+              <div class="dash-hero-card grad-dark">
+                <div class="d-flex justify-content-between align-items-start">
+                  <div class="dash-hero-icon"><i class="bi bi-calendar3"></i></div>
+                  <span class="dash-trend-pill" id="stat-sales-month-orders-pill"><i class="bi bi-receipt"></i> 0 طلب</span>
+                </div>
+                <div class="dash-hero-value" id="stat-sales-month">0 EGP</div>
+                <div class="dash-hero-label">مبيعات هذا الشهر</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- KPI GRID -->
+          <div class="dash-section-title">الطلبات والعملاء والمخزون</div>
+          <div class="row g-3">
+            <div class="col-xl-2 col-md-4 col-sm-6">
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-icon bg-primary-subtle text-primary"><i class="bi bi-receipt-cutoff"></i></div>
+                <div>
+                  <div class="dash-kpi-value" id="stat-total-orders">0</div>
+                  <div class="dash-kpi-label">عدد الطلبات</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-icon bg-info-subtle text-info"><i class="bi bi-stars"></i></div>
+                <div>
+                  <div class="dash-kpi-value" id="stat-new-orders">0</div>
+                  <div class="dash-kpi-label">طلبات جديدة اليوم</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+              <div class="dash-kpi-card is-warning">
+                <div class="dash-kpi-icon bg-warning-subtle text-warning"><i class="bi bi-hourglass-split"></i></div>
+                <div>
+                  <div class="dash-kpi-value" id="stat-pending-orders">0</div>
+                  <div class="dash-kpi-label">طلبات معلّقة</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-icon bg-success-subtle text-success"><i class="bi bi-people"></i></div>
+                <div>
+                  <div class="dash-kpi-value" id="stat-total-users">0</div>
+                  <div class="dash-kpi-label">عدد العملاء</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+              <div class="dash-kpi-card">
+                <div class="dash-kpi-icon bg-primary-subtle text-primary"><i class="bi bi-box-seam"></i></div>
+                <div>
+                  <div class="dash-kpi-value" id="stat-total-products">0</div>
+                  <div class="dash-kpi-label">عدد المنتجات</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xl-2 col-md-4 col-sm-6">
+              <div class="dash-kpi-card is-alert">
+                <div class="dash-kpi-icon bg-danger-subtle text-danger"><i class="bi bi-exclamation-triangle-fill"></i></div>
+                <div>
+                  <div class="dash-kpi-value" id="stat-low-stock">0</div>
+                  <div class="dash-kpi-label">أوشكت على النفاد</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CHARTS -->
+          <div class="dash-section-title">الأداء البياني</div>
+          <div class="row g-4">
+            <div class="col-lg-6">
+              <div class="admin-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h6 class="mb-0 fw-bold"><i class="bi bi-graph-up text-primary me-2"></i>مخطط المبيعات</h6>
+                  <span class="dash-chart-legend"><span class="dot" style="background:var(--admin-primary);"></span>آخر الطلبات</span>
+                </div>
+                <div class="py-3">
+                  <svg viewBox="0 0 500 100" preserveAspectRatio="none" id="sales-chart-svg" style="width:100%; height: 200px;">
+                    <!-- SVG Chart -->
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="admin-card h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <h6 class="mb-0 fw-bold"><i class="bi bi-graph-up-arrow text-success me-2"></i>مخطط الأرباح التقديري</h6>
+                  <span class="dash-chart-legend"><span class="dot" style="background:var(--admin-success);"></span>هامش ربح ~25%</span>
+                </div>
+                <div class="py-3">
+                  <svg viewBox="0 0 500 100" preserveAspectRatio="none" id="profit-chart-svg" style="width:100%; height: 200px;">
+                    <!-- SVG Chart -->
+                  </svg>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ACTIVITY + RECENT ORDERS -->
+          <div class="row g-4 mt-1">
+            <div class="col-lg-4">
+              <div class="admin-card h-100">
+                <h6 class="mb-3 fw-bold border-bottom pb-2"><i class="bi bi-activity text-primary me-2"></i>سجل النظام</h6>
+                <ul class="timeline" id="activity-timeline">
+                  <!-- Timeline logs -->
+                </ul>
+              </div>
+            </div>
+            <div class="col-lg-8">
+              <div class="admin-card">
+                <h6 class="mb-3 fw-bold border-bottom pb-2"><i class="bi bi-cart me-2 text-primary"></i>آخر الطلبات</h6>
+                <div class="table-responsive">
+                  <table class="table admin-table text-center mb-0">
+                    <thead>
+                      <tr>
+                        <th>الفاتورة</th>
+                        <th>المشتري</th>
+                        <th>الأصناف</th>
+                        <th>الإجمالي المدفوع</th>
+                        <th>الحالة</th>
+                      </tr>
+                    </thead>
+                    <tbody id="recent-orders-tbody">
+                      <!-- Dynamically populated -->
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TOP SELLERS + RECENT CUSTOMERS -->
+          <div class="row g-4 mt-1">
+            <div class="col-lg-6">
+              <div class="admin-card h-100">
+                <h6 class="mb-3 fw-bold border-bottom pb-2"><i class="bi bi-trophy me-2 text-primary"></i>الأكثر مبيعًا</h6>
+                <div id="top-sellers-list">
+                  <!-- Dynamically populated -->
+                </div>
+              </div>
+            </div>
+            <div class="col-lg-6">
+              <div class="admin-card h-100">
+                <h6 class="mb-3 fw-bold border-bottom pb-2"><i class="bi bi-people me-2 text-primary"></i>أحدث العملاء</h6>
+                <div id="recent-users-list">
+                  <!-- Dynamically populated -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 2: PRODUCT LIST (CRUD)
+             ========================================== -->
+        <div id="tab-products" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 border-bottom pb-3 mb-4">
+              <div>
+                <h5 class="mb-1 fw-bold"><i class="bi bi-box-seam text-primary me-2"></i>كتالوج المنتجات</h5>
+                <p class="text-muted fs-8 mb-0">أضف وانسخ واحذف وعدّل تفاصيل المنتجات.</p>
+              </div>
+              <button class="btn btn-primary px-4 py-2 fs-8 fw-semibold" onclick="openAddProductModal()">
+                <i class="bi bi-plus-lg me-1"></i>إضافة منتج جديد
+              </button>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>الصورة</th>
+                    <th class="text-start">الاسم</th>
+                    <th>الباركود</th>
+                    <th>القسم</th>
+                    <th>السعر</th>
+                    <th>الخصم</th>
+                    <th>الكمية</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="products-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 3: CATEGORIES LIST
+             ========================================== -->
+        <div id="tab-categories" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 border-bottom pb-3 mb-4">
+              <div>
+                <h5 class="mb-1 fw-bold"><i class="bi bi-folder2-open text-primary me-2"></i>أقسام المتجر</h5>
+                <p class="text-muted fs-8 mb-0">تحكم في أقسام تصفح المنتجات.</p>
+              </div>
+              <button class="btn btn-primary px-4 py-2 fs-8 fw-semibold" onclick="openAddCategoryModal()">
+                <i class="bi bi-plus-lg me-1"></i>إضافة قسم
+              </button>
+            </div>
+            <table class="table admin-table text-center mb-0">
+              <thead>
+                <tr>
+                  <th>الترتيب</th>
+                  <th class="text-start">اسم القسم</th>
+                  <th>إجراءات الترتيب</th>
+                </tr>
+              </thead>
+              <tbody id="categories-table-body">
+                <!-- Dynamic content -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 4: BRANDS LIST
+             ========================================== -->
+        <div id="tab-brands" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 border-bottom pb-3 mb-4">
+              <div>
+                <h5 class="mb-1 fw-bold"><i class="bi bi-tags text-primary me-2"></i>ماركات المتجر</h5>
+                <p class="text-muted fs-8 mb-0">تحكم في إعدادات الماركات.</p>
+              </div>
+              <button class="btn btn-primary px-4 py-2 fs-8 fw-semibold" onclick="openAddBrandModal()">
+                <i class="bi bi-plus-lg me-1"></i>إضافة ماركة
+              </button>
+            </div>
+            <table class="table admin-table text-center mb-0">
+              <thead>
+                <tr>
+                  <th>الترتيب</th>
+                  <th class="text-start">اسم الماركة</th>
+                  <th>الإجراءات</th>
+                </tr>
+              </thead>
+              <tbody id="brands-table-body">
+                <!-- Dynamic content -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 5: INVENTORY STATUS
+             ========================================== -->
+        <div id="tab-inventory" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-shield-exclamation text-primary me-2"></i>كميات المخزون</h5>
+            <p class="text-muted fs-8 mb-4">لوحة سريعة لجرد المخزون وتنبيهات النقص.</p>
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>الصورة</th>
+                    <th class="text-start">المنتج</th>
+                    <th>الكمية المتاحة</th>
+                    <th>الحالة</th>
+                  </tr>
+                </thead>
+                <tbody id="inventory-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 6: CUSTOMER ORDERS LOG
+             ========================================== -->
+        <div id="tab-orders" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-receipt-cutoff text-primary me-2"></i>سجل الطلبات</h5>
+            <p class="text-muted fs-8 mb-4">تابع الفواتير وعناوين الشحن وحالة الطلبات.</p>
+
+            <div class="row g-2 align-items-center mb-3">
+              <div class="col-md-5">
+                <input type="text" id="orders-search-input" class="form-control admin-form-control" placeholder="ابحث برقم الفاتورة، اسم العميل، أو الهاتف...">
+              </div>
+              <div class="col-md-3">
+                <select id="orders-status-filter" class="form-select admin-form-select">
+                  <option value="">كل الحالات</option>
+                  <option value="Pending">قيد الانتظار</option>
+                  <option value="Confirmed">مؤكد</option>
+                  <option value="Preparing">جاري التجهيز</option>
+                  <option value="Shipping">قيد الشحن</option>
+                  <option value="Delivered">تم التسليم</option>
+                  <option value="Rejected">مرفوض</option>
+                  <option value="Cancelled">ملغي</option>
+                  <option value="Refunded">مسترجع</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <select id="orders-sort-select" class="form-select admin-form-select">
+                  <option value="date-desc">الأحدث أولاً</option>
+                  <option value="date-asc">الأقدم أولاً</option>
+                  <option value="total-desc">الأعلى قيمة أولاً</option>
+                  <option value="total-asc">الأقل قيمة أولاً</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>الفاتورة</th>
+                    <th>بيانات المشتري</th>
+                    <th class="text-start">الأصناف</th>
+                    <th>المبلغ المدفوع</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th style="min-width:210px;">إجراء</th>
+                  </tr>
+                </thead>
+                <tbody id="orders-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+            <nav class="mt-3">
+              <ul class="pagination pagination-sm justify-content-center mb-0" id="orders-pagination"></ul>
+            </nav>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 7: CUSTOMER DIRECTORY
+             ========================================== -->
+        <div id="tab-customers" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-people text-primary me-2"></i>عملاء المتجر</h5>
+            <p class="text-muted fs-8 mb-4">اطّلع على المشتريات وحالة الحسابات، وأوقف حسابات العملاء عند الحاجة.</p>
+
+            <div class="row g-2 align-items-center mb-3">
+              <div class="col-md-5">
+                <input type="text" id="customers-search-input" class="form-control admin-form-control" placeholder="ابحث بالاسم أو البريد الإلكتروني أو الهاتف...">
+              </div>
+              <div class="col-md-3">
+                <select id="customers-status-filter" class="form-select admin-form-select">
+                  <option value="">كل الحسابات</option>
+                  <option value="active">نشط</option>
+                  <option value="suspended">موقوف</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <select id="customers-sort-select" class="form-select admin-form-select">
+                  <option value="date-desc">الأحدث تسجيلاً</option>
+                  <option value="date-asc">الأقدم تسجيلاً</option>
+                  <option value="spend-desc">الأعلى إنفاقاً</option>
+                  <option value="orders-desc">الأكثر طلبات</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>الصورة</th>
+                    <th>الاسم</th>
+                    <th class="text-start">البريد الإلكتروني</th>
+                    <th>الهاتف</th>
+                    <th>تاريخ التسجيل</th>
+                    <th>عدد الطلبات</th>
+                    <th>إجمالي المشتريات</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="customers-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+            <nav class="mt-3">
+              <ul class="pagination pagination-sm justify-content-center mb-0" id="customers-pagination"></ul>
+            </nav>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 8: CONTACT INBOX
+             ========================================== -->
+        <div id="tab-messages" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-chat-left-text text-primary me-2"></i>صندوق الرسائل</h5>
+            <p class="text-muted fs-8 mb-4">اطّلع على استفسارات العملاء المرسلة من نموذج التواصل.</p>
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>الأيقونة</th>
+                    <th>اسم المرسل</th>
+                    <th class="text-start">البريد الإلكتروني</th>
+                    <th class="text-start">الموضوع</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th>إجراء</th>
+                  </tr>
+                </thead>
+                <tbody id="messages-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 9: PRODUCT REVIEWS
+             ========================================== -->
+        <div id="tab-reviews" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-star text-primary me-2"></i>تقييمات المنتجات</h5>
+            <p class="text-muted fs-8 mb-4">راجع التقييمات ووافق عليها. التقييمات المعتمدة تظهر تلقائيًا في صفحة المنتج.</p>
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>الكاتب</th>
+                    <th>المنتج</th>
+                    <th>التقييم</th>
+                    <th class="text-start">التعليق</th>
+                    <th>الحالة</th>
+                    <th>إجراء</th>
+                  </tr>
+                </thead>
+                <tbody id="reviews-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 10: COUPON CODES
+             ========================================== -->
+        <div id="tab-coupons" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 border-bottom pb-3 mb-4">
+              <div>
+                <h5 class="mb-1 fw-bold"><i class="bi bi-percent text-primary me-2"></i>مولّد أكواد الخصم</h5>
+                <p class="text-muted fs-8 mb-0">أنشئ أكواد خصم مثل WELCOME10 وSUMMER25 وغيرها.</p>
+              </div>
+              <button class="btn btn-primary px-4 py-2 fs-8 fw-semibold" onclick="openAddCouponModal()">
+                <i class="bi bi-plus-lg me-1"></i>إنشاء كود خصم
+              </button>
+            </div>
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>الكود</th>
+                    <th>نسبة الخصم</th>
+                    <th>تاريخ الانتهاء</th>
+                    <th>الحد الأدنى للطلب</th>
+                    <th>معدل الاستخدام</th>
+                    <th>إجراء</th>
+                  </tr>
+                </thead>
+                <tbody id="coupons-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 11: OFFERS & PROMOS
+             ========================================== -->
+        <div id="tab-offers" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-gift text-primary me-2"></i>العروض الخاصة</h5>
+            <p class="text-muted fs-8 mb-4">أضف المنتجات إلى العروض السريعة، وعروض الأسبوع، وصفوف الصفحة الرئيسية.</p>
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>الصورة</th>
+                    <th class="text-start">اسم المنتج</th>
+                    <th>عرض سريع</th>
+                    <th>خصم أسبوعي</th>
+                    <th>صف مميز</th>
+                  </tr>
+                </thead>
+                <tbody id="offers-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB: INVOICES LEDGER
+             ========================================== -->
+        <div id="tab-invoices" class="admin-tab-panel" style="display:none;">
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+              <div class="admin-card h-100 text-center">
+                <div class="text-muted fs-9 mb-1">عدد الفواتير</div>
+                <div class="fs-4 fw-bold" id="inv-stat-count">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="admin-card h-100 text-center">
+                <div class="text-muted fs-9 mb-1">إجمالي المحصّل</div>
+                <div class="fs-4 fw-bold text-success" id="inv-stat-total">0 ج.م</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="admin-card h-100 text-center">
+                <div class="text-muted fs-9 mb-1">فواتير هذا الشهر</div>
+                <div class="fs-4 fw-bold" id="inv-stat-month">0</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="admin-card h-100 text-center">
+                <div class="text-muted fs-9 mb-1">متوسط قيمة الفاتورة</div>
+                <div class="fs-4 fw-bold" id="inv-stat-avg">0 ج.م</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-card">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 border-bottom pb-2 mb-3">
+              <h5 class="mb-0 fw-bold"><i class="bi bi-file-earmark-text text-primary me-2"></i>سجل الفواتير</h5>
+              <button class="btn btn-sm btn-outline-primary" onclick="exportInvoicesCSV()"><i class="bi bi-download me-1"></i>تصدير CSV</button>
+            </div>
+            <div class="row g-2 align-items-center mb-3">
+              <div class="col-md-5">
+                <input type="text" id="invoices-search-input" class="form-control admin-form-control" placeholder="ابحث برقم الفاتورة أو اسم العميل...">
+              </div>
+              <div class="col-md-3">
+                <input type="date" id="invoices-date-filter" class="form-control admin-form-control">
+              </div>
+              <div class="col-md-4">
+                <select id="invoices-status-filter" class="form-select admin-form-select">
+                  <option value="">كل الحالات</option>
+                  <option value="Pending">قيد الانتظار</option>
+                  <option value="Confirmed">مؤكد</option>
+                  <option value="Delivered">تم التسليم</option>
+                  <option value="Refunded">مسترجع</option>
+                  <option value="Cancelled">ملغي</option>
+                </select>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>رقم الفاتورة</th>
+                    <th>العميل</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th>الإجمالي</th>
+                    <th style="min-width:150px;">إجراء</th>
+                  </tr>
+                </thead>
+                <tbody id="invoices-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+            <nav class="mt-3">
+              <ul class="pagination pagination-sm justify-content-center mb-0" id="invoices-pagination"></ul>
+            </nav>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB: PURCHASES & PROFIT
+             ========================================== -->
+        <div id="tab-purchases" class="admin-tab-panel" style="display:none;">
+          <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3">
+              <div class="admin-card h-100 text-center">
+                <div class="text-muted fs-9 mb-1">إجمالي المبيعات</div>
+                <div class="fs-5 fw-bold text-success" id="profit-stat-revenue">0 ج.م</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="admin-card h-100 text-center">
+                <div class="text-muted fs-9 mb-1">إجمالي المشتريات (التكلفة)</div>
+                <div class="fs-5 fw-bold text-danger" id="profit-stat-cost">0 ج.م</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="admin-card h-100 text-center">
+                <div class="text-muted fs-9 mb-1">صافي الربح</div>
+                <div class="fs-5 fw-bold text-primary" id="profit-stat-net">0 ج.م</div>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="admin-card h-100 text-center">
+                <div class="text-muted fs-9 mb-1">هامش الربح</div>
+                <div class="fs-5 fw-bold" id="profit-stat-margin">0%</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="admin-card mb-4">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-cart-plus text-primary me-2"></i>تسجيل عملية شراء جديدة (تكلفة توريد)</h5>
+            <p class="text-muted fs-8 mb-3">سجّل هنا كل عملية شراء بضاعة أو قطع من المورّدين، عشان يتحسب الربح الحقيقي بدقة (المبيعات ناقص التكلفة الفعلية).</p>
+            <form id="add-purchase-form" class="row g-3">
+              <div class="col-md-4">
+                <label class="admin-form-label">المنتج</label>
+                <select class="form-select admin-form-select" id="purchase-product-select" required></select>
+              </div>
+              <div class="col-md-2">
+                <label class="admin-form-label">الكمية</label>
+                <input type="number" min="1" class="form-control admin-form-control" id="purchase-qty" required>
+              </div>
+              <div class="col-md-3">
+                <label class="admin-form-label">تكلفة الوحدة (ج.م)</label>
+                <input type="number" min="0" step="0.01" class="form-control admin-form-control" id="purchase-unit-cost" required>
+              </div>
+              <div class="col-md-3">
+                <label class="admin-form-label">المورّد</label>
+                <input type="text" class="form-control admin-form-control" id="purchase-supplier" placeholder="اسم المورّد">
+              </div>
+              <div class="col-12">
+                <button type="submit" class="btn w-100" style="background:var(--admin-primary); color:#fff;"><i class="bi bi-plus-circle me-1"></i>تسجيل عملية الشراء</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="admin-card">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-bag-check text-primary me-2"></i>سجل المشتريات</h5>
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>المنتج</th>
+                    <th>الكمية</th>
+                    <th>تكلفة الوحدة</th>
+                    <th>الإجمالي</th>
+                    <th>المورّد</th>
+                    <th>التاريخ</th>
+                    <th>إجراء</th>
+                  </tr>
+                </thead>
+                <tbody id="purchases-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+            <nav class="mt-3">
+              <ul class="pagination pagination-sm justify-content-center mb-0" id="purchases-pagination"></ul>
+            </nav>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 12: STAFF PERMISSIONS
+             ========================================== -->
+        <div id="tab-users" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card mb-4">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-person-plus text-primary me-2"></i>دعوة موظف جديد</h5>
+            <p class="text-muted fs-8 mb-4">يرسل دعوة مرتبطة ببريد إلكتروني ودور محدد. الموظف نفسه يكمل التسجيل ويضع كلمة مروره الخاصة من صفحة <code>staff-signup.html</code> — هذا أكثر أماناً من مشاركة كلمة مرور بينكما.</p>
+            <form id="add-staff-form" class="row g-3">
+              <div class="col-md-6">
+                <label class="admin-form-label">الاسم الكامل</label>
+                <input type="text" class="form-control admin-form-control" id="add-staff-name" required>
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">البريد الإلكتروني</label>
+                <input type="email" class="form-control admin-form-control" id="add-staff-email" required>
+              </div>
+              <div class="col-md-8">
+                <label class="admin-form-label">مستوى الصلاحية</label>
+                <select class="form-select admin-form-select" id="add-staff-role" required>
+                  <option value="Admin">مشرف</option>
+                  <option value="Warehouse">مخازن</option>
+                  <option value="Sales">مبيعات</option>
+                  <option value="Customer Support">دعم العملاء</option>
+                  <option value="Accountant">محاسب</option>
+                  <option value="Super Admin">مشرف عام</option>
+                </select>
+              </div>
+              <div class="col-md-4 d-flex align-items-end">
+                <button type="submit" class="btn w-100" style="background:var(--admin-primary); color:#fff;"><i class="bi bi-send me-1"></i>إرسال الدعوة</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="admin-card mb-4">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-envelope-paper text-primary me-2"></i>دعوات بانتظار التسجيل</h5>
+            <table class="table admin-table text-center mb-0">
+              <thead>
+                <tr>
+                  <th>الاسم</th>
+                  <th>البريد الإلكتروني</th>
+                  <th>الدور</th>
+                  <th>إجراء</th>
+                </tr>
+              </thead>
+              <tbody id="invites-table-body">
+                <!-- Dynamic content -->
+              </tbody>
+            </table>
+          </div>
+
+          <div class="admin-card">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-shield-lock text-primary me-2"></i>حسابات الموظفين</h5>
+            <p class="text-muted fs-8 mb-4">حسابات حقيقية مؤمّنة عبر Supabase Auth ومحمية بقواعد Row Level Security.</p>
+            <table class="table admin-table text-center mb-0">
+              <thead>
+                <tr>
+                  <th>اسم الموظف</th>
+                  <th>البريد الإلكتروني</th>
+                  <th>مستوى الصلاحية</th>
+                  <th>إجراء</th>
+                </tr>
+              </thead>
+              <tbody id="users-table-body">
+                <!-- Dynamic content -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 14: SYSTEM REPORTS
+             ========================================== -->
+        <div id="tab-reports" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3 border-bottom pb-3 mb-3">
+              <div>
+                <h5 class="mb-1 fw-bold"><i class="bi bi-bar-chart-line text-primary me-2"></i>تقارير المبيعات</h5>
+                <p class="text-muted fs-8 mb-0">أرقام حقيقية مبنية على الطلبات المسجلة فعليًا في المتجر.</p>
+              </div>
+              <div class="d-flex flex-wrap gap-2" id="report-range-buttons">
+                <button class="btn btn-sm btn-outline-primary report-range-btn active" data-range="7">آخر 7 أيام</button>
+                <button class="btn btn-sm btn-outline-primary report-range-btn" data-range="30">آخر 30 يوم</button>
+                <button class="btn btn-sm btn-outline-primary report-range-btn" data-range="90">آخر 3 أشهر</button>
+                <button class="btn btn-sm btn-outline-primary report-range-btn" data-range="365">آخر سنة</button>
+                <button class="btn btn-sm btn-outline-primary report-range-btn" data-range="all">كل الفترات</button>
+              </div>
+            </div>
+            <div id="reports-container"></div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 15: GLOBAL STORE SETTINGS
+             ========================================== -->
+        <div id="tab-settings" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-gear text-primary me-2"></i>الإعدادات العامة</h5>
+            <p class="text-muted fs-8 mb-4">عدّل بيانات المتجر والهاتف والعنوان ونسبة الضريبة ورسوم الشحن.</p>
+            
+            <form id="settings-form">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="admin-form-label">اسم المتجر</label>
+                  <input type="text" class="form-control admin-form-control" id="settings-store-name" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label">بريد الدعم الفني</label>
+                  <input type="email" class="form-control admin-form-control" id="settings-email" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label">رقم التواصل</label>
+                  <input type="text" class="form-control admin-form-control" id="settings-phone" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="admin-form-label">العملة الافتراضية</label>
+                  <input type="text" class="form-control admin-form-control" id="settings-currency" readonly>
+                </div>
+                <div class="col-12">
+                  <label class="admin-form-label">عنوان المقر الرئيسي</label>
+                  <textarea class="form-control admin-form-control" id="settings-address" rows="2" required></textarea>
+                </div>
+                <div class="col-12 mt-3">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="settings-maintenance">
+                    <label class="form-check-label fw-bold text-dark fs-8" for="settings-maintenance">تفعيل وضع الصيانة للمتجر</label>
+                  </div>
+                </div>
+                <div class="col-12 mt-4">
+                  <button type="submit" class="btn btn-primary px-4 py-2 fs-8 fw-semibold">حفظ الإعدادات</button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 16: ADMIN PROFILE
+             ========================================== -->
+        <div id="tab-profile" class="admin-tab-panel" style="display:none;">
+          <div class="row g-4">
+            <div class="col-md-8">
+              <div class="admin-card">
+                <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-person-badge text-primary me-2"></i>الملف الشخصي</h5>
+                <form id="profile-form">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="admin-form-label">الاسم الكامل</label>
+                      <input type="text" class="form-control admin-form-control" id="profile-fullname" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="admin-form-label">اسم المستخدم</label>
+                      <input type="text" class="form-control admin-form-control" id="profile-username" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="admin-form-label">البريد الإلكتروني</label>
+                      <input type="email" class="form-control admin-form-control" id="profile-email" required readonly title="بريد الدخول الخاص بك — لا يمكن تعديله من هنا">
+                    </div>
+                    <div class="col-md-6">
+                      <label class="admin-form-label">رقم الجوال</label>
+                      <input type="text" class="form-control admin-form-control" id="profile-phone" required>
+                    </div>
+                    <div class="col-12 mt-4">
+                      <button type="submit" class="btn btn-primary px-4 py-2 fs-8 fw-semibold">حفظ البيانات</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+              
+              <div class="admin-card mt-4">
+                <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-key text-primary me-2"></i>تغيير كلمة المرور</h5>
+                <form id="password-form">
+                  <div class="row g-3">
+                    <div class="col-md-4">
+                      <label class="admin-form-label">كلمة المرور الحالية</label>
+                      <input type="password" class="form-control admin-form-control" id="profile-curr-password" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="admin-form-label">كلمة المرور الجديدة</label>
+                      <input type="password" class="form-control admin-form-control" id="profile-new-password" required>
+                    </div>
+                    <div class="col-md-4">
+                      <label class="admin-form-label">تأكيد كلمة المرور الجديدة</label>
+                      <input type="password" class="form-control admin-form-control" id="profile-confirm-password" required>
+                    </div>
+                    <div class="col-12 mt-4">
+                      <button type="submit" class="btn btn-outline-primary px-4 py-2 fs-8 fw-semibold">تحديث كلمة المرور</button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+            
+            <div class="col-md-4">
+              <div class="admin-card">
+                <h5 class="mb-3 fw-bold border-bottom pb-2"><i class="bi bi-shield-lock text-primary me-2"></i>سجل عمليات الدخول</h5>
+                <div id="profile-history-list"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ==========================================
+             TAB 19: ACTIVITY AUDIT LOG
+             ========================================== -->
+        <div id="tab-activity-log" class="admin-tab-panel" style="display:none;">
+          <div class="admin-card">
+            <h5 class="mb-2 fw-bold border-bottom pb-2"><i class="bi bi-clock-history text-primary me-2"></i>سجل مراجعة النظام</h5>
+            <p class="text-muted fs-8 mb-4">تابع التحديثات الإدارية وتغييرات كلمات المرور وإضافات المخزون وعمليات الدخول.</p>
+            <div class="table-responsive">
+              <table class="table admin-table text-center mb-0">
+                <thead>
+                  <tr>
+                    <th>التوقيت</th>
+                    <th class="text-start">سجل العملية</th>
+                    <th>المسؤول</th>
+                  </tr>
+                </thead>
+                <tbody id="activity-log-table-body">
+                  <!-- Dynamic content -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODALS
+       ========================================== -->
+  <!-- CUSTOMER DETAIL -->
+  <div class="modal fade" id="customerDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content text-dark">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold"><i class="bi bi-person-vcard me-1 text-primary"></i>ملف العميل</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body fs-8 text-secondary" style="max-height: 70vh; overflow-y: auto;">
+          <div class="row g-3 mb-3">
+            <div class="col-md-6">
+              <div class="report-kpi-card">
+                <div class="report-kpi-label">الاسم</div>
+                <div class="fw-bold text-dark" id="customer-detail-name">—</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="report-kpi-card">
+                <div class="report-kpi-label">حالة الحساب</div>
+                <div id="customer-detail-status">—</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="report-kpi-card">
+                <div class="report-kpi-label"><i class="bi bi-envelope me-1"></i>البريد الإلكتروني</div>
+                <div class="fw-semibold text-dark text-break" id="customer-detail-email">—</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="report-kpi-card">
+                <div class="report-kpi-label"><i class="bi bi-telephone me-1"></i>الهاتف</div>
+                <div class="fw-semibold text-dark font-monospace" id="customer-detail-phone">—</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="report-kpi-card">
+                <div class="report-kpi-label"><i class="bi bi-geo-alt me-1"></i>العنوان</div>
+                <div class="fw-semibold text-dark" id="customer-detail-address">—</div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="report-kpi-card">
+                <div class="report-kpi-label"><i class="bi bi-calendar3 me-1"></i>تاريخ التسجيل</div>
+                <div class="fw-semibold text-dark" id="customer-detail-since">—</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="report-kpi-card">
+                <div class="report-kpi-label">عدد الطلبات</div>
+                <div class="report-kpi-value" id="customer-detail-order-count">0</div>
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="report-kpi-card">
+                <div class="report-kpi-label">إجمالي المشتريات</div>
+                <div class="report-kpi-value" id="customer-detail-total-spend">0 ج.م</div>
+              </div>
+            </div>
+          </div>
+
+          <h6 class="fw-bold border-bottom pb-2 mb-2"><i class="bi bi-receipt-cutoff text-primary me-1"></i>سجل طلبات هذا العميل</h6>
+          <div class="table-responsive">
+            <table class="table admin-table text-center mb-0">
+              <thead>
+                <tr>
+                  <th>الفاتورة</th>
+                  <th class="text-start">الأصناف</th>
+                  <th>المبلغ</th>
+                  <th>التاريخ</th>
+                  <th>الحالة</th>
+                </tr>
+              </thead>
+              <tbody id="customer-detail-orders-body">
+                <!-- Dynamic content -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer border-top">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">إغلاق</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD PRODUCT -->
+  <div class="modal fade" id="addProductModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+      <div class="modal-content text-dark">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle me-1 text-primary"></i>إضافة منتج جديد للكتالوج</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="add-product-form">
+          <div class="modal-body fs-8 text-secondary" style="max-height: 70vh; overflow-y: auto;">
+            <div class="row g-4">
+              <!-- Left column: images + quick preview -->
+              <div class="col-lg-4">
+                <label class="admin-form-label d-flex justify-content-between align-items-center">
+                  <span><i class="bi bi-images me-1"></i>صور المنتج</span>
+                  <span class="text-muted fs-9" id="add-images-count">0 صورة</span>
+                </label>
+                <div id="add-image-dropzone" class="add-product-dropzone">
+                  <i class="bi bi-cloud-arrow-up fs-3 text-primary d-block mb-1"></i>
+                  <span class="fs-9">اسحب الصور هنا أو اضغط للاختيار</span>
+                  <small class="text-muted d-block fs-9">يمكن اختيار أكثر من صورة دفعة واحدة</small>
+                  <input type="file" id="add-image-file" accept="image/*" multiple hidden>
+                </div>
+                <div id="add-images-gallery" class="add-product-gallery mt-2"></div>
+
+                <div class="mt-2">
+                  <label class="admin-form-label fs-9">أو أضف رابط صورة</label>
+                  <div class="input-group input-group-sm">
+                    <input type="url" class="form-control admin-form-control" id="add-image-url" placeholder="https://...">
+                    <button type="button" class="btn btn-outline-primary" id="add-image-url-btn"><i class="bi bi-plus-lg"></i></button>
+                  </div>
+                </div>
+
+                <div class="admin-form-preview-card mt-3">
+                  <div class="report-kpi-label mb-2"><i class="bi bi-eye me-1"></i>معاينة سريعة</div>
+                  <div class="d-flex align-items-center gap-2">
+                    <div id="add-preview-thumb" class="add-preview-thumb">
+                      <i class="bi bi-image text-muted"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                      <div class="fw-bold text-dark text-truncate" id="add-preview-name">اسم المنتج...</div>
+                      <div class="fs-9" id="add-preview-price">0 EGP</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Right column: form fields -->
+              <div class="col-lg-8">
+                <div class="row g-3">
+                  <div class="col-12"><div class="admin-form-section-title"><i class="bi bi-card-heading me-1"></i>البيانات الأساسية</div></div>
+                  <div class="col-md-6">
+                    <label class="admin-form-label">الاسم (إنجليزي) <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control admin-form-control" id="add-name-en" required>
+                    <div class="invalid-feedback">مطلوب إدخال الاسم بالإنجليزي</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="admin-form-label">الاسم (عربي) <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control admin-form-control" id="add-name-ar" required>
+                    <div class="invalid-feedback">مطلوب إدخال الاسم بالعربي</div>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="admin-form-label">القسم (إنجليزي)</label>
+                    <select class="form-select admin-form-select" id="add-cat-en" required>
+                      <option value="Gaming PCs">أجهزة كمبيوتر ألعاب</option>
+                      <option value="Gaming Laptops">لابتوبات ألعاب</option>
+                      <option value="SSD">أقراص SSD</option>
+                      <option value="HDD">أقراص HDD</option>
+                      <option value="RAM">ذاكرة RAM</option>
+                      <option value="GPU">كروت شاشة GPU</option>
+                      <option value="CPU">معالجات CPU</option>
+                      <option value="Motherboard">اللوحات الأم</option>
+                      <option value="Cooling">أنظمة التبريد</option>
+                      <option value="PSU">مزودات الطاقة PSU</option>
+                      <option value="Cases">الكيسات</option>
+                      <option value="Monitor">الشاشات</option>
+                      <option value="Keyboard">لوحات المفاتيح</option>
+                      <option value="Mouse">الماوس</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="admin-form-label">القسم (عربي)</label>
+                    <select class="form-select admin-form-select" id="add-cat-ar" required>
+                      <option value="أجهزة الألعاب">أجهزة الألعاب</option>
+                      <option value="أجهزة لابتوب الألعاب">أجهزة لابتوب الألعاب</option>
+                      <option value="كروت الشاشة">كروت الشاشة</option>
+                      <option value="المعالجات">المعالجات</option>
+                      <option value="الشاشات">الشاشات</option>
+                      <option value="لوحات المفاتيح">لوحات المفاتيح</option>
+                    </select>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="admin-form-label">الماركة <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control admin-form-control" id="add-brand" required>
+                  </div>
+
+                  <div class="col-12 mt-1"><div class="admin-form-section-title"><i class="bi bi-tag me-1"></i>السعر والمخزون</div></div>
+                  <div class="col-md-4">
+                    <label class="admin-form-label">السعر (جنيه مصري) <span class="text-danger">*</span></label>
+                    <div class="input-group">
+                      <input type="number" class="form-control admin-form-control" id="add-price" min="1" step="1" required>
+                      <span class="input-group-text">EGP</span>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="admin-form-label">نسبة الخصم %</label>
+                    <div class="input-group">
+                      <input type="number" class="form-control admin-form-control" id="add-discount" min="0" max="100" value="0">
+                      <span class="input-group-text">%</span>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="admin-form-label">الكمية المتاحة <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control admin-form-control" id="add-stock" min="0" required value="10">
+                  </div>
+                  <div class="col-12" id="add-price-after-discount-row" style="display:none;">
+                    <div class="alert alert-light border py-1 px-2 mb-0 fs-9 d-flex justify-content-between">
+                      <span>السعر بعد الخصم:</span>
+                      <span class="fw-bold text-success" id="add-price-after-discount">0 EGP</span>
+                    </div>
+                  </div>
+
+                  <div class="col-12 mt-1"><div class="admin-form-section-title"><i class="bi bi-shield-check me-1"></i>الضمان والحالة</div></div>
+                  <div class="col-md-6">
+                    <label class="admin-form-label">بيانات الضمان (إنجليزي)</label>
+                    <input type="text" class="form-control admin-form-control" id="add-warranty-en" required value="3 Years Premium Warranty">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="admin-form-label">بيانات الضمان (عربي)</label>
+                    <input type="text" class="form-control admin-form-control" id="add-warranty-ar" required value="ضمان بريميوم لمدة 3 سنوات">
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch mt-2">
+                      <input class="form-check-input" type="checkbox" id="add-is-featured">
+                      <label class="form-check-label fs-8" for="add-is-featured"><i class="bi bi-star-fill text-warning me-1"></i>منتج مميز</label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check form-switch mt-2">
+                      <input class="form-check-input" type="checkbox" id="add-is-visible" checked>
+                      <label class="form-check-label fs-8" for="add-is-visible"><i class="bi bi-eye me-1"></i>إظهار المنتج في المتجر</label>
+                    </div>
+                  </div>
+
+                  <div class="col-12 mt-1"><div class="admin-form-section-title"><i class="bi bi-file-text me-1"></i>الوصف والمواصفات</div></div>
+                  <div class="col-12">
+                    <label class="admin-form-label">الوصف (إنجليزي) <span class="text-danger">*</span></label>
+                    <textarea class="form-control admin-form-control" id="add-desc-en" rows="2" required></textarea>
+                  </div>
+                  <div class="col-12">
+                    <label class="admin-form-label">الوصف (عربي) <span class="text-danger">*</span></label>
+                    <textarea class="form-control admin-form-control" id="add-desc-ar" rows="2" required></textarea>
+                  </div>
+                  <div class="col-12">
+                    <label class="admin-form-label d-flex justify-content-between align-items-center">
+                      <span>المواصفات</span>
+                      <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fs-9" onclick="addSpecRow('add')"><i class="bi bi-plus-lg me-1"></i>إضافة خاصية</button>
+                    </label>
+                    <div id="add-specs-rows" class="d-flex flex-column gap-2"></div>
+                  </div>
+                  <input type="hidden" id="add-specs-json">
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary px-3 fs-8" data-bs-dismiss="modal">إغلاق</button>
+            <button type="submit" class="btn btn-primary px-4 fs-8"><i class="bi bi-check-lg me-1"></i>حفظ المنتج</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT PRODUCT -->
+  <div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content text-dark">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square me-1 text-primary"></i>تعديل بيانات المنتج</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="edit-product-form">
+          <input type="hidden" id="edit-product-id">
+          <div class="modal-body fs-8 text-secondary" style="max-height: 480px; overflow-y: auto;">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="admin-form-label">الاسم (إنجليزي)</label>
+                <input type="text" class="form-control admin-form-control" id="edit-name-en" required>
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">الاسم (عربي)</label>
+                <input type="text" class="form-control admin-form-control" id="edit-name-ar" required>
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">القسم (إنجليزي)</label>
+                <select class="form-select admin-form-select" id="edit-cat-en" required>
+                  <option value="Gaming PCs">أجهزة كمبيوتر ألعاب</option>
+                  <option value="Gaming Laptops">لابتوبات ألعاب</option>
+                  <option value="SSD">أقراص SSD</option>
+                  <option value="HDD">أقراص HDD</option>
+                  <option value="RAM">ذاكرة RAM</option>
+                  <option value="GPU">كروت شاشة GPU</option>
+                  <option value="CPU">معالجات CPU</option>
+                  <option value="Motherboard">اللوحات الأم</option>
+                  <option value="Cooling">أنظمة التبريد</option>
+                  <option value="PSU">مزودات الطاقة PSU</option>
+                  <option value="Cases">الكيسات</option>
+                  <option value="Monitor">الشاشات</option>
+                  <option value="Keyboard">لوحات المفاتيح</option>
+                  <option value="Mouse">الماوس</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label class="admin-form-label">الماركة</label>
+                <input type="text" class="form-control admin-form-control" id="edit-brand" required>
+              </div>
+              <div class="col-md-3">
+                <label class="admin-form-label">السعر (جنيه مصري)</label>
+                <input type="number" class="form-control admin-form-control" id="edit-price" min="1" step="1" required>
+              </div>
+              <div class="col-md-3">
+                <label class="admin-form-label">نسبة الخصم %</label>
+                <input type="number" class="form-control admin-form-control" id="edit-discount" min="0" max="100">
+              </div>
+              <div class="col-md-3">
+                <label class="admin-form-label">الكمية المتاحة</label>
+                <input type="number" class="form-control admin-form-control" id="edit-stock" min="0" required>
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">استبدال ملف الصورة</label>
+                <input type="file" class="form-control admin-form-control" id="edit-image-file" accept="image/*">
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">أو استبدال رابط الصورة</label>
+                <input type="url" class="form-control admin-form-control" id="edit-image-url">
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">بيانات الضمان (إنجليزي)</label>
+                <input type="text" class="form-control admin-form-control" id="edit-warranty-en" required>
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">بيانات الضمان (عربي)</label>
+                <input type="text" class="form-control admin-form-control" id="edit-warranty-ar" required>
+              </div>
+              <div class="col-12">
+                <label class="admin-form-label">الوصف (إنجليزي)</label>
+                <textarea class="form-control admin-form-control" id="edit-desc-en" rows="2" required></textarea>
+              </div>
+              <div class="col-12">
+                <label class="admin-form-label">الوصف (عربي)</label>
+                <textarea class="form-control admin-form-control" id="edit-desc-ar" rows="2" required></textarea>
+              </div>
+              <div class="col-12">
+                <label class="admin-form-label d-flex justify-content-between align-items-center">
+                  <span>المواصفات</span>
+                  <button type="button" class="btn btn-sm btn-outline-primary py-0 px-2 fs-9" onclick="addSpecRow('edit')"><i class="bi bi-plus-lg me-1"></i>إضافة خاصية</button>
+                </label>
+                <div id="edit-specs-rows" class="d-flex flex-column gap-2"></div>
+              </div>
+              <input type="hidden" id="edit-specs-json">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary px-3 fs-8" data-bs-dismiss="modal">إغلاق</button>
+            <button type="submit" class="btn btn-primary px-4 fs-8">حفظ التعديلات</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD CATEGORY -->
+  <div class="modal fade" id="addCategoryModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-dark">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-1"></i>إضافة قسم جديد</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="add-category-form">
+          <div class="modal-body fs-8">
+            <label class="admin-form-label">اسم القسم</label>
+            <input type="text" class="form-control admin-form-control" id="add-category-name" required placeholder="مثال: لوحات المفاتيح">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary px-3 fs-8" data-bs-dismiss="modal">إغلاق</button>
+            <button type="submit" class="btn btn-primary px-4 fs-8">حفظ القسم</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD BRAND -->
+  <div class="modal fade" id="addBrandModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-dark">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-1"></i>إضافة ماركة جديدة</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="add-brand-form">
+          <div class="modal-body fs-8">
+            <label class="admin-form-label">اسم الماركة</label>
+            <input type="text" class="form-control admin-form-control" id="add-brand-name" required placeholder="مثال: Gigabyte">
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary px-3 fs-8" data-bs-dismiss="modal">إغلاق</button>
+            <button type="submit" class="btn btn-primary px-4 fs-8">حفظ الماركة</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD COUPON -->
+  <div class="modal fade" id="addCouponModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-dark">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-1"></i>إنشاء كود خصم</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="add-coupon-form">
+          <div class="modal-body fs-8 text-secondary">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="admin-form-label">كود الخصم (أحرف كبيرة)</label>
+                <input type="text" class="form-control admin-form-control" id="add-coupon-code" required placeholder="WELCOME10">
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">نسبة الخصم %</label>
+                <input type="number" class="form-control admin-form-control" id="add-coupon-discount" min="1" max="100" required>
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">تاريخ الانتهاء</label>
+                <input type="date" class="form-control admin-form-control" id="add-coupon-expiry" required>
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">الحد الأدنى للطلب (ج.م)</label>
+                <input type="number" class="form-control admin-form-control" id="add-coupon-min" required value="500">
+              </div>
+              <div class="col-md-6">
+                <label class="admin-form-label">أقصى عدد استخدام</label>
+                <input type="number" class="form-control admin-form-control" id="add-coupon-limit" required value="100">
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary px-3 fs-8" data-bs-dismiss="modal">إغلاق</button>
+            <button type="submit" class="btn btn-primary px-4 fs-8">حفظ الكود</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTACT MESSAGE VIEW DETAIL -->
+  <div class="modal fade" id="orderInvoiceModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+      <div class="modal-content text-dark">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold"><i class="bi bi-receipt-cutoff me-1 text-primary"></i>فاتورة الطلب</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body fs-8 text-secondary" id="order-invoice-body" style="max-height: 70vh; overflow-y: auto;">
+          <!-- Filled dynamically by showOrderInvoice() -->
+        </div>
+        <div class="modal-footer border-top">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">إغلاق</button>
+          <button type="button" class="btn btn-outline-primary" onclick="downloadOrderInvoicePDF()"><i class="bi bi-file-earmark-pdf me-1"></i>تحميل PDF</button>
+          <button type="button" class="btn btn-primary" onclick="printOrderInvoice()"><i class="bi bi-printer me-1"></i>طباعة</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="messageDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content text-dark">
+        <div class="modal-header border-bottom">
+          <h5 class="modal-title fw-bold"><i class="bi bi-chat-right-text text-primary me-1"></i>عرض رسالة الدعم</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body fs-8 text-secondary">
+          <div class="mb-3 border-bottom pb-2">
+            <small class="text-muted font-monospace d-block">بيانات المرسل</small>
+            <strong class="text-dark fs-7 d-block mt-1" id="msg-detail-sender">-</strong>
+          </div>
+          <div class="mb-3 border-bottom pb-2">
+            <small class="text-muted font-monospace d-block">الموضوع</small>
+            <strong class="text-dark fs-7 d-block mt-1" id="msg-detail-subject">-</strong>
+          </div>
+          <div class="mb-4">
+            <small class="text-muted font-monospace d-block">نص الرسالة</small>
+            <p class="text-dark fs-7 mt-2 bg-light border p-3 rounded" style="white-space: pre-wrap; line-height: 1.6;" id="msg-detail-body">-</p>
+          </div>
+          
+          <div class="bg-light border rounded p-3 mt-3">
+            <h6 class="fw-bold text-dark fs-8 mb-2"><i class="bi bi-reply-all-fill me-1 text-primary"></i>إرسال رد</h6>
+            <input type="hidden" id="msg-reply-id">
+            <div class="mb-2">
+              <input type="text" class="form-control admin-form-control fs-8 py-2" id="msg-reply-subject" readonly>
+            </div>
+            <div class="mb-2">
+              <textarea class="form-control admin-form-control fs-8" id="msg-reply-body" rows="3" placeholder="اكتب الرسالة..."></textarea>
+            </div>
+            <button class="btn btn-primary btn-sm px-3" onclick="sendSimulatedReply()">إرسال الرد</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary px-3 fs-8" data-bs-dismiss="modal">إغلاق</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Boot Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <script>
+    AOS.init({ duration: 800, once: true });
+    
+    function openAddProductModal() {
+      // Reset any leftover gallery state from a previous cancelled attempt
+      if (typeof addProductImages !== 'undefined') {
+        addProductImages = [];
+        if (typeof renderAddProductGallery === 'function') renderAddProductGallery();
+        if (typeof updateAddProductPreview === 'function') updateAddProductPreview();
+      }
+      // Reset spec rows so leftover entries from a previous attempt don't carry over
+      const specsContainer = document.getElementById('add-specs-rows');
+      if (specsContainer) specsContainer.innerHTML = '';
+      if (typeof addSpecRow === 'function') addSpecRow('add');
+      const modal = new bootstrap.Modal(document.getElementById('addProductModal'));
+      modal.show();
+    }
+    function openAddCategoryModal() {
+      const modal = new bootstrap.Modal(document.getElementById('addCategoryModal'));
+      modal.show();
+    }
+    function openAddBrandModal() {
+      const modal = new bootstrap.Modal(document.getElementById('addBrandModal'));
+      modal.show();
+    }
+    function openAddCouponModal() {
+      const modal = new bootstrap.Modal(document.getElementById('addCouponModal'));
+      modal.show();
+    }
+  </script>
+  
+  <script src="assets/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Login Portal | GPU Trades</title>
+  
+  <meta name="description" content="Access your GPU Trades account to track order logs, manage shipping details, and access customized PC builder specifications.">
+  <link rel="canonical" href="login.html">
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet" id="bootstrap-css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  
+  <link href="assets/css/style.css" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script src="assets/js/supabase-sync.js"></script>
+  <script src="assets/js/products-data.js"></script>
+  <script src="assets/js/cart-wishlist.js"></script>
+</head>
+<body>
+
+  <!-- Preloader -->
+  <div id="loading-screen">
+    <div class="loader-circuit-container">
+      <div class="loader-ring"></div>
+      <div class="loader-cpu-chip"></div>
+    </div>
+    <div class="font-monospace text-orange fs-7 mt-3 animate-pulse" data-translate="login-boot">جاري إنشاء اتصال آمن ومشفر...</div>
+  </div>
+
+  <!-- Header -->
+  <script src="assets/js/main.js"></script>
+  <script>renderPremiumHeader();</script>
+
+  <!-- Login Area -->
+  <section class="py-5 mt-5">
+    <div class="container d-flex justify-content-center">
+      <div class="w-100" style="max-width: 450px;" data-aos="zoom-in">
+        
+        <div class="glass-panel p-4 p-md-5 border-orange glow-orange">
+          <div class="text-center mb-4">
+            <img src="assets/img/logo.png" alt="GPU Trades Logo" class="mb-3" style="height: 60px; width: auto;">
+            <h4 class="text-white font-monospace text-uppercase text-orange lang-ar"><i class="bi bi-shield-lock-fill me-2 ms-2"></i>بوابة الدخول الآمنة</h4>
+            <h4 class="text-white font-monospace text-uppercase text-orange lang-en"><i class="bi bi-shield-lock-fill me-2"></i>SECURE GATEWAY</h4>
+            <span class="text-muted font-monospace fs-8 lang-ar">أدخل بيانات الحساب للمزامنة ومتابعة الطلبات</span>
+            <span class="text-muted font-monospace fs-8 lang-en">Provide account credentials to sync profiles</span>
+          </div>
+
+          <!-- Arabic Form -->
+          <form id="login-form-ar" class="login-form-bilingual lang-ar" novalidate>
+            <div class="mb-3">
+              <label class="form-label font-monospace fs-8 text-muted">البريد الإلكتروني</label>
+              <div class="input-group border-orange" style="border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden;">
+                <span class="input-group-text bg-glass border-0 text-orange"><i class="bi bi-envelope"></i></span>
+                <input type="email" class="form-control bg-glass text-white border-0 font-monospace fs-7 px-3 py-2 login-email-input" placeholder="مثال: ahmed@domain.com" required style="outline: none; box-shadow: none;">
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label font-monospace fs-8 text-muted">كلمة المرور</label>
+              <div class="input-group border-orange" style="border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden;">
+                <span class="input-group-text bg-glass border-0 text-orange"><i class="bi bi-key"></i></span>
+                <input type="password" class="form-control bg-glass text-white border-0 font-monospace fs-7 px-3 py-2 login-password-input" placeholder="••••••••••••" required style="outline: none; box-shadow: none;">
+                <button class="btn btn-outline-secondary border-0 text-muted toggle-password-btn" type="button"><i class="bi bi-eye"></i></button>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <label class="custom-checkbox-orange">
+                تذكرني على هذا الجهاز
+                <input type="checkbox" class="keep-signed-in-input">
+                <span class="checkbox-checkmark"></span>
+              </label>
+              <a href="#" class="font-monospace text-orange fs-8 text-decoration-none hover-white forgot-password-link">نسيت كلمة المرور؟</a>
+            </div>
+
+            <button class="btn btn-gradient w-100 py-3 font-monospace fs-7 mb-4" type="submit">
+              <i class="bi bi-box-arrow-in-right me-2 ms-2"></i>تسجيل الدخول للحساب
+            </button>
+
+            <div class="text-center mb-4">
+              <div class="position-relative">
+                <hr class="border-orange" style="opacity: 0.15;">
+                <span class="position-absolute top-50 start-50 translate-middle bg-glass px-3 font-monospace text-muted" style="font-size: 0.65rem; border: 1px solid rgba(255,255,255,0.05); border-radius: 10px;">أو الدخول بواسطة</span>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-4">
+              <div class="col-6">
+                <button class="btn btn-outline-orange w-100 font-monospace fs-8 py-2" type="button"><i class="fab fa-google me-2 ms-2"></i>جوجل</button>
+              </div>
+              <div class="col-6">
+                <button class="btn btn-outline-orange w-100 font-monospace fs-8 py-2" type="button"><i class="fab fa-apple me-2 ms-2"></i>حساب آبل</button>
+              </div>
+            </div>
+
+            <div class="text-center font-monospace fs-8 text-muted">
+              <span>ليس لديك حساب بعد؟ </span>
+              <a href="register.html" class="text-orange text-decoration-none hover-white">سجل هنا</a>
+            </div>
+          </form>
+
+          <!-- English Form -->
+          <form id="login-form-en" class="login-form-bilingual lang-en" novalidate>
+            <div class="mb-3">
+              <label class="form-label font-monospace fs-8 text-muted">Email Address</label>
+              <div class="input-group border-orange" style="border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden;">
+                <span class="input-group-text bg-glass border-0 text-orange"><i class="bi bi-envelope"></i></span>
+                <input type="email" class="form-control bg-glass text-white border-0 font-monospace fs-7 px-3 py-2 login-email-input" placeholder="e.g., alex@domain.com" required style="outline: none; box-shadow: none;">
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label font-monospace fs-8 text-muted">Password</label>
+              <div class="input-group border-orange" style="border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); overflow: hidden;">
+                <span class="input-group-text bg-glass border-0 text-orange"><i class="bi bi-key"></i></span>
+                <input type="password" class="form-control bg-glass text-white border-0 font-monospace fs-7 px-3 py-2 login-password-input" placeholder="••••••••••••" required style="outline: none; box-shadow: none;">
+                <button class="btn btn-outline-secondary border-0 text-muted toggle-password-btn" type="button"><i class="bi bi-eye"></i></button>
+              </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4">
+              <label class="custom-checkbox-orange">
+                Keep Me Signed In
+                <input type="checkbox" class="keep-signed-in-input">
+                <span class="checkbox-checkmark"></span>
+              </label>
+              <a href="#" class="font-monospace text-orange fs-8 text-decoration-none hover-white forgot-password-link">Forgot?</a>
+            </div>
+
+            <button class="btn btn-gradient w-100 py-3 font-monospace fs-7 mb-4" type="submit">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Authenticate Session
+            </button>
+
+            <div class="text-center mb-4">
+              <div class="position-relative">
+                <hr class="border-orange" style="opacity: 0.15;">
+                <span class="position-absolute top-50 start-50 translate-middle bg-glass px-3 font-monospace text-muted" style="font-size: 0.65rem; border: 1px solid rgba(255,255,255,0.05); border-radius: 10px;">OR AUTHENTICATE WITH</span>
+              </div>
+            </div>
+
+            <div class="row g-2 mb-4">
+              <div class="col-6">
+                <button class="btn btn-outline-orange w-100 font-monospace fs-8 py-2" type="button"><i class="fab fa-google me-2"></i>Google</button>
+              </div>
+              <div class="col-6">
+                <button class="btn btn-outline-orange w-100 font-monospace fs-8 py-2" type="button"><i class="fab fa-apple me-2"></i>Apple ID</button>
+              </div>
+            </div>
+
+            <div class="text-center font-monospace fs-8 text-muted">
+              <span>Don't have an elite account? </span>
+              <a href="register.html" class="text-orange text-decoration-none hover-white">Register Here</a>
+            </div>
+          </form>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <script>renderPremiumFooter();</script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+  <!-- Login Form Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.login-form-bilingual').forEach(form => {
+        const emailInput = form.querySelector('.login-email-input');
+        const passwordInput = form.querySelector('.login-password-input');
+        const toggleBtn = form.querySelector('.toggle-password-btn');
+        const forgotLink = form.querySelector('.forgot-password-link');
+
+        // Toggle password eyes visibility
+        toggleBtn.addEventListener('click', () => {
+          const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+          passwordInput.setAttribute('type', type);
+          toggleBtn.innerHTML = type === 'password' ? '<i class="bi bi-eye"></i>' : '<i class="bi bi-eye-slash"></i>';
+        });
+
+        // Handle Form Submit (Real check against registered accounts)
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const currentLang = getCurrentLang();
+          
+          const emailVal = emailInput.value.trim();
+          const pwdVal = passwordInput.value;
+
+          // Basic Regex checks
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(emailVal)) {
+            const err = currentLang === 'ar' ? "يرجى تقديم عنوان بريد إلكتروني صالح" : "Please provide a valid email format address";
+            showToast(err, "error");
+            return;
+          }
+
+          // Authenticate via Supabase Auth
+          const submitBtn = form.querySelector('button[type="submit"]');
+          submitBtn.disabled = true;
+
+          const { data, error } = await window.sb.auth.signInWithPassword({
+            email: emailVal,
+            password: pwdVal
+          });
+
+          if (error) {
+            submitBtn.disabled = false;
+            let err = error.message;
+            if (/invalid login credentials/i.test(err)) {
+              err = currentLang === 'ar' ? "البريد الإلكتروني أو كلمة المرور غير صحيحة" : "Incorrect email or password";
+            }
+            showToast(err, "error");
+            return;
+          }
+
+          // Check if customer account is suspended
+          const { data: customerProfile } = await window.sb.from('profiles').select('is_active, full_name').eq('id', data.user.id).maybeSingle();
+          if (customerProfile && !customerProfile.is_active) {
+            submitBtn.disabled = false;
+            const err = currentLang === 'ar' ? "تم إيقاف هذا الحساب. يرجى التواصل مع الإدارة." : "This account has been suspended. Please contact administration.";
+            showToast(err, "error");
+            await window.sb.auth.signOut();
+            return;
+          }
+
+          // Check if staff account is suspended
+          const { data: staffProfile } = await window.sb.from('staff_profiles').select('is_active, role, full_name').eq('id', data.user.id).maybeSingle();
+          if (staffProfile && !staffProfile.is_active) {
+            submitBtn.disabled = false;
+            const err = currentLang === 'ar' ? "تم إيقاف هذا الحساب. يرجى التواصل مع الإدارة." : "This account has been suspended. Please contact administration.";
+            showToast(err, "error");
+            await window.sb.auth.signOut();
+            return;
+          }
+
+          // Fetch name and role
+          const userName = (staffProfile && staffProfile.full_name) || (customerProfile && customerProfile.full_name) || data.user.user_metadata.full_name || emailVal.split('@')[0];
+          const userRole = (staffProfile && staffProfile.role) || 'Customer';
+
+          // Save session
+          setSession({
+            id: data.user.id,
+            email: data.user.email,
+            name: userName,
+            role: userRole
+          });
+
+          const msg = currentLang === 'ar' ? "تم تفويض الوصول! مرحبًا بك مجددًا في جي بي يو تريدز." : "Access Authorized! Welcome back to GPU Trades.";
+          showToast(msg, "success");
+
+          const isStaff = ADMIN_ROLES.includes(userRole);
+          const params = new URLSearchParams(window.location.search);
+          const redirectTo = params.get('redirect');
+          setTimeout(() => {
+            if (isStaff) {
+              window.location.href = 'admin.html';
+            } else if (redirectTo) {
+              window.location.href = redirectTo;
+            } else {
+              window.location.href = 'index.html';
+            }
+          }, 1200);
+        });
+
+        forgotLink.addEventListener('click', (e) => {
+          e.preventDefault();
+          const currentLang = getCurrentLang();
+          const msg = currentLang === 'ar' ? "تم إرسال بروتوكول استرداد كلمة المرور إلى بريدك الإلكتروني" : "Password recovery protocol dispatched to your email";
+          showToast(msg, "info");
+        });
+      });
+    });
+  </script></body>
+<script>
+  (function preserveRedirectParam() {
+    const params = new URLSearchParams(window.location.search);
+    const redirectTo = params.get('redirect');
+    if (!redirectTo) return;
+    document.querySelectorAll('a[href="register.html"]').forEach(a => {
+      a.href = 'register.html?redirect=' + encodeURIComponent(redirectTo);
+    });
+  })();
+</script>
+</html>

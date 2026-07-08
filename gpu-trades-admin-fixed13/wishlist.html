@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Saved Wishlist | GPU Trades</title>
+  
+  <meta name="description" content="View your saved computer hardware, processors, gaming laptops, and custom builds in your GPU Trades wishlist.">
+  <link rel="canonical" href="wishlist.html">
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css" rel="stylesheet" id="bootstrap-css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css" rel="stylesheet">
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
+  
+  <link href="assets/css/style.css" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="assets/js/supabase-client.js"></script>
+  <script src="assets/js/supabase-sync.js"></script>
+  <script src="assets/js/products-data.js"></script>
+  <script src="assets/js/cart-wishlist.js"></script>
+  <script src="assets/js/auth-guard.js"></script>
+  <script src="assets/js/whatsapp-invite.js"></script>
+</head>
+<body>
+
+  <!-- Preloader -->
+  <div id="loading-screen">
+    <div class="loader-circuit-container">
+      <div class="loader-ring"></div>
+      <div class="loader-cpu-chip"></div>
+    </div>
+    <div class="font-monospace text-orange fs-7 mt-3 animate-pulse" data-translate="wishlist-boot">جاري استرجاع قائمة المفضلة...</div>
+  </div>
+
+  <!-- Header -->
+  <script src="assets/js/main.js"></script>
+  <script>renderPremiumHeader();</script>
+
+  <!-- Page Banner -->
+  <section class="py-5 position-relative overflow-hidden bg-glass border-bottom border-orange">
+    <div class="circuit-overlay"></div>
+    <div class="container text-center py-3 position-relative z-1">
+      <h1 class="display-5 text-white mb-2" data-translate="wishlist-heading">قائمة المفضلة</h1>
+      <p class="text-muted font-monospace fs-7" data-translate="wishlist-desc">قائمتك الخاصة من القطع والأجهزة عالية الأداء التي ترغب في شرائها لاحقاً.</p>
+    </div>
+  </section>
+
+  <!-- Wishlist Main Content -->
+  <section class="py-5">
+    <div class="container">
+      
+      <!-- Wishlist Grid -->
+      <div class="row g-4" id="wishlist-grid-container">
+        <!-- Injected dynamically via JS -->
+      </div>
+
+      <!-- Empty Wishlist Alert -->
+      <div id="empty-wishlist-container" class="glass-panel p-5 text-center my-4" style="display: none;">
+        <i class="bi bi-heartbreak text-orange display-1 d-block mb-3 animate-pulse" style="filter: drop-shadow(0 0 10px rgba(255,106,0,0.3));"></i>
+        <h4 class="text-white font-monospace" data-translate="empty-wishlist-title">قائمة مفضلتك فارغة</h4>
+        <p class="text-muted font-monospace fs-7 mt-2" data-translate="empty-wishlist-desc">احفظ كروت الشاشة والمعالجات والتجميعات المفضلة لديك هنا للعودة إليها لاحقاً.</p>
+        <a href="products.html" class="btn btn-gradient font-monospace mt-3 px-4 py-3" data-translate="browse-products">Browse PC Hardware</a>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <script>renderPremiumFooter();</script>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+  <!-- Wishlist Controller Script -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      
+      const gridContainer = document.getElementById('wishlist-grid-container');
+      const emptyContainer = document.getElementById('empty-wishlist-container');
+
+      function renderWishlistUI() {
+        const currentLang = getCurrentLang();
+        const addText = currentLang === 'ar' ? 'إضافة' : 'Add';
+
+        if (wishlist.length === 0) {
+          gridContainer.innerHTML = '';
+          gridContainer.style.display = 'none';
+          emptyContainer.style.display = 'block';
+          return;
+        }
+
+        gridContainer.style.display = 'flex';
+        emptyContainer.style.display = 'none';
+
+        gridContainer.innerHTML = wishlist.map(productId => {
+          const product = PRODUCTS_DATA.find(p => String(p.id) === String(productId));
+          if (!product) return '';
+
+          const discountText = currentLang === 'ar' ? 'خصم' : 'OFF';
+          const discountBadge = product.discount ? `<div class="product-card-badge">${product.discount}% ${discountText}</div>` : '';
+          const badge = currentLang === 'ar' ? product.badge_ar : product.badge_en;
+          const badgeNew = (badge === 'New' || badge === 'جديد') ? `<div class="product-card-badge badge-new">${currentLang === 'ar' ? 'جديد' : 'NEW'}</div>` : '';
+          const cardBadge = discountBadge || (badge ? `<div class="product-card-badge">${badge}</div>` : '') || '';
+          const oldPriceHTML = product.oldPrice ? `<span class="product-old-price" dir="ltr">${formatPrice(product.oldPrice)}</span>` : '';
+          const name = currentLang === 'ar' ? product.name_ar : product.name_en;
+          const category = currentLang === 'ar' ? product.category_ar : product.category_en;
+
+          return `
+            <div class="col-xl-3 col-lg-4 col-sm-6 col-12" data-aos="fade-up">
+              <div class="product-card h-100">
+                ${cardBadge}
+                <button class="product-card-wishlist active" onclick="toggleWishlist('${product.id}')" title="Remove from Wishlist">
+                  <i class="bi bi-heart-fill" style="color: #ff2a6d;"></i>
+                </button>
+                <a href="product-details.html?id=${product.id}" class="text-decoration-none">
+                  <div class="product-card-img-wrapper">
+                    ${product.image}
+                  </div>
+                </a>
+                <div class="product-card-body">
+                  <div class="product-category">${category}</div>
+                  <a href="product-details.html?id=${product.id}" class="text-decoration-none">
+                    <h5 class="product-title text-white" title="${name}">${name}</h5>
+                  </a>
+                  <div class="product-rating">
+                    ${getStarsHTML(product.rating)} <span class="text-muted font-monospace">(${product.rating})</span>
+                  </div>
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="product-price-wrapper">
+                      <span class="product-price" dir="ltr">${formatPrice(product.price)}</span>
+                      ${oldPriceHTML}
+                    </div>
+                    <button class="btn btn-gradient btn-sm font-monospace fs-7 py-1 px-2" onclick="addToCart('${product.id}', 1)">
+                      <i class="bi bi-cart-plus me-1 ms-1"></i> ${addText}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // Helper function to render stars
+      function getStarsHTML(rating) {
+        let stars = '';
+        const fullStars = Math.floor(rating);
+        const halfStar = rating % 1 >= 0.5;
+        for (let i = 1; i <= 5; i++) {
+          if (i <= fullStars) {
+            stars += '<i class="bi bi-star-fill text-warning"></i>';
+          } else if (i === fullStars + 1 && halfStar) {
+            stars += '<i class="bi bi-star-half text-warning"></i>';
+          } else {
+            stars += '<i class="bi bi-star text-muted"></i>';
+          }
+        }
+        return stars;
+      }
+
+      // Listen for updates and render
+      window.addEventListener('wishlistUpdated', renderWishlistUI);
+      window.addEventListener('languageChanged', renderWishlistUI);
+      window.addEventListener('gpu:synced', renderWishlistUI);
+      
+      // Initial Render
+      renderWishlistUI();
+    });
+  </script>
+</body>
+</html>
